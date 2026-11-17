@@ -1,0 +1,57 @@
+import Foundation
+
+@main
+struct ModelChecks {
+    static func main() throws {
+        let calendar = Calendar.current
+        func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 0, _ minute: Int = 0) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+        }
+        var checks = 0
+        func check(_ condition: @autoclosure () -> Bool, _ label: String) {
+            precondition(condition(), "FALHOU: \(label)"); checks += 1
+        }
+        check(Money.parse("1.250,50") == 125050, "BRL com separador de milhar")
+        check(Money.parse("200,5") == 20050, "Uma casa decimal")
+        check(Money.parse("") == 0, "Valor não informado")
+        for invalid in ["-2", "abc", "1,000", "1,2,3", "99999999999999999999999"] {
+            check(Money.parse(invalid) == nil, "Valor inválido: \(invalid)")
+        }
+        check(Money.parse(Money.input(123456)) == 123456, "Preservar centavos na edição")
+        let night = ShiftRules.interval(day: date(2026, 11, 17), start: date(2020, 1, 1, 19), end: date(2020, 1, 1, 7))
+        check(Int(night.duration) == 12 * 3600, "Plantão noturno de 12h")
+        check(calendar.component(.day, from: night.end) == 18, "Saída no dia seguinte")
+        let full = ShiftRules.interval(day: date(2026, 11, 17), start: date(2020, 1, 1, 7), end: date(2020, 1, 1, 7))
+        check(Int(full.duration) == 24 * 3600, "Horários iguais representam 24h")
+        check(ShiftRules.paymentDate(for: date(2026, 1, 15), day: 31, nextMonth: true) == date(2026, 2, 28), "Dia 31 em fevereiro")
+        check(ShiftRules.paymentDate(for: date(2028, 1, 15), day: 31, nextMonth: true) == date(2028, 2, 29), "Ano bissexto")
+        check(ShiftRules.paymentDate(for: date(2026, 12, 31), day: 5, nextMonth: true) == date(2027, 1, 5), "Virada do ano")
+        check(ShiftRules.paymentDate(for: date(2026, 11, 17), day: 8, nextMonth: false) == date(2026, 11, 8), "Mesmo mês")
+        var shift = Shift(date: date(2026, 11, 17), title: "Noturno", location: "Hospital", start: night.start, end: night.end,
+                          color: .purple, notes: "Observação", amountCents: 125050, paymentDate: date(2026, 12, 5))
+        let encoded = try JSONEncoder().encode(shift)
+        let decoded = try JSONDecoder().decode(Shift.self, from: encoded)
+        check(decoded == shift, "Persistência de todos os campos")
+        // Build exactly the JSON shape used by the original app.
+        var legacy = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+        for key in ["amountCents", "paymentDate", "isPaid"] { legacy.removeValue(forKey: key) }
+        legacy["color"] = "sage"
+        let migrated = try JSONDecoder().decode(Shift.self, from: JSONSerialization.data(withJSONObject: legacy))
+        check(migrated.id == shift.id && migrated.notes == shift.notes && migrated.color == .sage, "Migrar preservando os dados antigos")
+        check(migrated.amountCents == 0 && migrated.paymentDate == nil && !migrated.isPaid, "Valores padrão na migração")
+        check(Reports.select([shift], kind: .schedule, month: date(2026, 11, 1)).count == 1, "Escala usa a data do plantão")
+        check(Reports.select([shift], kind: .payments, month: date(2026, 11, 1)).isEmpty, "Não contar pagamento futuro no mês do plantão")
+        check(Reports.select([shift], kind: .payments, month: date(2026, 12, 1)).count == 1, "Financeiro usa a previsão")
+        check(!shift.overdue(on: date(2026, 12, 5, 23)), "Vencimento hoje não está atrasado")
+        check(shift.overdue(on: date(2026, 12, 6)), "Pagamento pendente vencido")
+        shift.isPaid = true
+        check(!shift.overdue(on: date(2026, 12, 6)), "Recebidos não estão atrasados")
+        check(Reports.select([shift], kind: .payments, month: nil, filter: .pending).isEmpty, "Filtro pendente")
+        check(Reports.select([shift], kind: .payments, month: nil, filter: .paid).count == 1, "Filtro recebido")
+        shift.paymentDate = nil
+        check(Reports.select([shift], kind: .payments, month: nil).count == 1, "Todo período inclui pagamentos sem data")
+        check(Reports.select([shift], kind: .payments, month: date(2026, 11, 1)).isEmpty, "Sem data fica fora de um mês específico")
+        check(ShiftColor.allCases.count == 12, "Doze cores disponíveis")
+        print("\(checks) verificações aprovadas · \(TimeZone.current.identifier)")
+    }
+}
