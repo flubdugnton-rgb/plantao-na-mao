@@ -112,7 +112,7 @@ struct ColorChoices: View {
                 Button { selection = color } label: {
                     VStack(spacing: 6) {
                         Circle().fill(color.value).frame(width: 38, height: 38)
-                            .overlay { if selection == color { Image(systemName: "checkmark").font(.headline).foregroundStyle(color == .yellow || color == .peach ? Color.black : Color.white) } }
+                            .overlay { if selection == color { Image(systemName: "checkmark").font(.headline).foregroundStyle(color == .monochrome ? Color(.systemBackground) : color == .yellow || color == .peach ? Color.black : Color.white) } }
                         Text(color.name).font(.caption2).foregroundStyle(.primary)
                     }.frame(maxWidth: .infinity)
                 }.buttonStyle(.plain)

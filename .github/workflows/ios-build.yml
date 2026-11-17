@@ -24,7 +24,7 @@ concurrency:
 jobs:
   build-ios:
     name: Validar e compilar iOS
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 35
     steps:
       - name: Baixar o projeto

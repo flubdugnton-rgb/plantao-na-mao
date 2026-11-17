@@ -20,7 +20,7 @@ permissions:
 jobs:
   export-project:
     name: Gerar projeto Xcode e pacote de fontes
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 10
     steps:
       - name: Baixar arquivos do projeto
