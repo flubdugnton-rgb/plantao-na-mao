@@ -3,6 +3,7 @@ import Foundation
 enum ShiftColor: String, Codable, CaseIterable, Identifiable {
     // Preserve the four identifiers used by version 1.0.
     case mint, sage, emerald, lime, blue, indigo, purple, pink, red, orange, amber, teal
+    case yellow, brown, gray, monochrome, sky, cyan, lavender, coral, rose, navy, forest, peach
     var id: String { rawValue }
     var name: String {
         switch self {
@@ -18,6 +19,18 @@ enum ShiftColor: String, Codable, CaseIterable, Identifiable {
         case .orange: return "Laranja"
         case .amber: return "Âmbar"
         case .teal: return "Petróleo"
+        case .yellow: return "Amarelo"
+        case .brown: return "Marrom"
+        case .gray: return "Cinza"
+        case .monochrome: return "Preto / branco"
+        case .sky: return "Azul-céu"
+        case .cyan: return "Ciano"
+        case .lavender: return "Lavanda"
+        case .coral: return "Coral"
+        case .rose: return "Rosé"
+        case .navy: return "Azul-marinho"
+        case .forest: return "Floresta"
+        case .peach: return "Pêssego"
         }
     }
 }

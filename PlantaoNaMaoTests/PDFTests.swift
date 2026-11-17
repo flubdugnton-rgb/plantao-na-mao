@@ -55,4 +55,19 @@ final class PDFTests: XCTestCase {
         store.save(Shift(date: .now, title: "Novo", location: "Hospital", start: .now, end: .now))
         XCTAssertEqual(defaults.data(forKey: "plantao-na-mao.shifts"), original)
     }
+
+    func testDeletionSurvivesRelaunchAndOfflineDeviceMerge() throws {
+        let suite = "PlantaoTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ShiftStore(defaults: defaults)
+        let shift = Shift(date: .now, title: "Excluir", location: "Hospital", start: .now, end: .now)
+        store.save(shift)
+        let offlineCopy = store.snapshot
+        store.remove(shift)
+        let reopened = ShiftStore(defaults: defaults)
+        try reopened.mergeRemote(offlineCopy)
+        XCTAssertTrue(reopened.shifts.isEmpty)
+        XCTAssertEqual(reopened.snapshot.deletions.count, 1)
+    }
 }

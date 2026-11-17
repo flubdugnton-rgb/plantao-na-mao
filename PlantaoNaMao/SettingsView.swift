@@ -1,6 +1,8 @@
 import SwiftUI
+import GoogleSignInSwift
 
 struct SettingsView: View {
+    @EnvironmentObject private var cloud: GoogleSyncController
     @AppStorage("plantao-na-mao.theme") private var theme = ShiftColor.mint.rawValue
     @AppStorage("plantao-na-mao.appearance") private var appearance = "system"
     @AppStorage("plantao-na-mao.paymentDay") private var paymentDay = 5
@@ -9,6 +11,30 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    if let email = cloud.email {
+                        Label(email, systemImage: "person.crop.circle.badge.checkmark")
+                        Toggle("Sincronização automática", isOn: $cloud.automatic).disabled(!cloud.hasDriveAccess)
+                        if cloud.isSyncing {
+                            HStack { ProgressView(); Text("Sincronizando seus plantões…") }
+                        } else {
+                            Button { Task { await cloud.syncNow() } } label: {
+                                Label("Sincronizar agora", systemImage: "arrow.triangle.2.circlepath")
+                            }.disabled(!cloud.hasDriveAccess)
+                        }
+                        if let last = cloud.lastSync {
+                            LabeledContent("Última sincronização", value: last.formatted(date: .abbreviated, time: .shortened))
+                                .font(.footnote)
+                        }
+                        if !cloud.hasDriveAccess { googleButton }
+                        Button("Desconectar Google", role: .destructive) { cloud.disconnect() }.disabled(cloud.isConnecting)
+                    } else { googleButton }
+                    if let error = cloud.errorMessage {
+                        Label(error, systemImage: "exclamationmark.icloud").font(.footnote).foregroundStyle(.orange)
+                    }
+                } header: { Text("Conta Google") } footer: {
+                    Text("Seus plantões ficam na pasta privada do app no Google Drive. Após conectar, sincronizamos ao abrir, depois de alterações e periodicamente enquanto o app estiver ativo. Sem internet, tudo continua salvo neste aparelho. A futura versão para Mac poderá usar a mesma conta.")
+                }
                 Section("Seu estilo") {
                     Picker("Aparência", selection: $appearance) {
                         Text("Automática").tag("system"); Text("Clara").tag("light"); Text("Escura").tag("dark")
@@ -28,10 +54,16 @@ struct SettingsView: View {
                 Section("Plantão na Mão") {
                     Label("Dados salvos neste dispositivo", systemImage: "lock.shield")
                     Text("Seus registros ficam disponíveis sem internet. Desinstalar o app pode apagar os dados locais.").font(.footnote).foregroundStyle(.secondary)
-                    LabeledContent("Versão", value: "1.0 · edição renovada")
+                    LabeledContent("Versão", value: "1.1 · Liquid Glass")
                 }
             }.navigationTitle("Ajustes")
                 .sheet(isPresented: $showingReports) { ReportView(month: .now) }
         }
+    }
+    private var googleButton: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GoogleSignInButton { Task { await cloud.connect() } }.disabled(cloud.isConnecting)
+            if cloud.isConnecting { ProgressView("Conectando ao Google…") }
+        }.padding(.vertical, 4)
     }
 }

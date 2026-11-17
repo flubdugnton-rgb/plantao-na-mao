@@ -1,4 +1,4 @@
-name: Compilar Plantão na Mão iOS 1.0
+name: Compilar Plantão na Mão iOS 1.1
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
     paths:
       - 'PlantaoNaMao/**'
       - 'PlantaoNaMaoTests/**'
+      - 'PlantaoNaMaoUITests/**'
       - 'Tests/**'
       - 'scripts/**'
       - 'project.yml'
@@ -28,6 +29,8 @@ jobs:
     steps:
       - name: Baixar o projeto
         uses: actions/checkout@v4
+      - name: Selecionar Xcode 26 para Liquid Glass
+        run: bash scripts/select-xcode.sh
       - name: Verificar cálculos, pagamentos e migração
         run: bash scripts/check-models.sh
       - name: Preparar XcodeGen
@@ -39,7 +42,7 @@ jobs:
           xcodegen generate
       - name: Testar no simulador iOS
         run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(device["udid"] for runtime,devices in d["devices"].items() if "iOS" in runtime for device in devices if "iPhone" in device["name"]))')
+          DEVICE_ID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(device["udid"] for runtime,devices in d["devices"].items() if "iOS-26" in runtime for device in devices if "iPhone" in device["name"]))')
           xcodebuild test \
             -project PlantaoNaMao.xcodeproj \
             -scheme PlantaoNaMao \
@@ -57,14 +60,20 @@ jobs:
             -archivePath build/PlantaoNaMao.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+      - name: Extrair capturas dos testes de interface
+        if: always()
+        run: |
+          if [ -d build/Tests.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path build/Screenshots || true
+          fi
       - name: Empacotar IPA sem assinatura e projeto Xcode
         run: |
           mkdir -p build/package/Payload
           ditto build/PlantaoNaMao.xcarchive/Products/Applications/PlantaoNaMao.app build/package/Payload/PlantaoNaMao.app
-          ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.0-sem-assinatura.ipa
+          ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.1-sem-assinatura.ipa
           ditto -c -k --keepParent PlantaoNaMao.xcodeproj build/PlantaoNaMao-Xcode.zip
           cat > build/LEIA-ME.txt <<'TXT'
-          Plantão na Mão 1.0
+          Plantão na Mão 1.1
           O IPA deste workflow NÃO está assinado. Para instalar em um iPhone/iPad,
           assine com uma conta/equipe Apple e um perfil de provisionamento válido.
           Para TestFlight/App Store, abra o projeto no Xcode, configure Signing &
@@ -78,20 +87,28 @@ jobs:
           path: build/Tests.xcresult
           if-no-files-found: ignore
           retention-days: 7
-      - name: Disponibilizar compilação iOS 1.0
+      - name: Disponibilizar compilação iOS 1.1
         uses: actions/upload-artifact@v4
         with:
-          name: PlantaoNaMao-iOS-1.0-sem-assinatura
+          name: PlantaoNaMao-iOS-1.1-sem-assinatura
           path: |
-            build/PlantaoNaMao-1.0-sem-assinatura.ipa
+            build/PlantaoNaMao-1.1-sem-assinatura.ipa
             build/PlantaoNaMao-Xcode.zip
             build/LEIA-ME.txt
           if-no-files-found: error
           retention-days: 14
+      - name: Disponibilizar capturas de tela
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlantaoNaMao-1.1-telas
+          path: build/Screenshots
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Resumo
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<'MD'
-          ## Plantão na Mão iOS 1.0
+          ## Plantão na Mão iOS 1.1
           - Testes de pagamentos, migração e PDFs executados no simulador.
           - Compilação Release para iPhone/iPad concluída.
           - Baixe o IPA **sem assinatura** e o projeto Xcode em **Artifacts**.

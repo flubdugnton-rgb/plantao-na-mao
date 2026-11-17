@@ -1,64 +1,64 @@
-# Plantão na Mão · iOS 1.0
+# Plantão na Mão · iOS 1.1
 
-Agenda nativa para iPhone e iPad, em português, com SwiftUI e iOS 17 ou superior. O nome exibido no aparelho é **Plantão na Mão**; o identificador do app continua sendo `com.plantaonamao.app`.
+Agenda nativa para iPhone e iPad, em português, com SwiftUI e iOS 17 ou superior. Bundle ID preservado: `com.plantaonamao.app`.
 
-## O que está disponível
+## Novidades da versão 1.1
 
-- Calendário mensal com navegação, botão Hoje e cores dos plantões.
-- Cadastro, edição e exclusão de plantões, com local, horários e observações.
-- Plantões que atravessam a meia-noite; horários iguais representam 24 horas.
-- Doze cores para os plantões e para o tema do app; aparência clara, escura ou automática.
-- Valores em reais, situação de recebimento e alertas de atraso na tela financeira.
-- Pagamento sem previsão, por dia padrão do mesmo/próximo mês ou por data personalizada em cada plantão.
-- Relatórios em PDF da escala, dos pagamentos e de um plantão individual; filtros por mês, período completo e situação do recebimento.
-- Salvar PDF em Arquivos, compartilhar pelo menu do iOS ou imprimir. As observações podem ser omitidas.
-- PDFs A4 com texto selecionável e paginação automática, incluindo observações extensas.
-- Locais agrupados a partir dos plantões e dados disponíveis sem internet.
+- Liquid Glass nativo nos controles e na navegação no iOS 26, compilado com Xcode 26. Em iOS 17–18, os controles usam materiais compatíveis; a opção de acessibilidade Reduzir Transparência é respeitada.
+- Nome do aplicativo no topo e mês atual em tamanho grande logo abaixo, com navegação entre meses.
+- Calendário fixo: apenas a lista de plantões abaixo dele rola, incluindo os próximos dias do mês.
+- Aros coloridos ao redor dos dias com plantões; quando há cores diferentes no mesmo dia, o aro é dividido nas respectivas cores.
+- Remoção do cartão e da frase “Tudo sob controle. Um plantão por vez.”.
+- 24 cores para o tema e para os plantões, mantendo as cores dos registros da versão anterior.
+- Conta Google e sincronização automática opcional por Google Drive, com formato de dados reutilizável na futura versão para Mac.
+- Versão do app atualizada para 1.1, build 3, e workflows de geração do projeto e compilação atualizados.
 
-## Pagamentos
+## Recursos mantidos
 
-Em **Ajustes**, escolha o dia padrão e se o pagamento ocorre no mês seguinte. No cadastro de cada plantão, escolha **Data personalizada** para definir qualquer data. O padrão é convertido em data ao salvar; mudar os ajustes não altera previsões já cadastradas. Dias 29–31 são limitados ao último dia de meses mais curtos.
+Calendário mensal, cadastro/edição/exclusão de plantões, locais, notas, horários noturnos, valores em reais e marcação de recebimento. PDF da escala, dos pagamentos e de um plantão individual, com filtros, observações opcionais, texto selecionável e paginação automática. Compartilhamento, impressão e salvamento em Arquivos.
 
-O resumo da **Escala** usa o mês do plantão. O **Financeiro** usa o mês da previsão de pagamento. Valores sem previsão aparecem em uma seção própria ou ao selecionar todos os períodos. Deslize um pagamento para a direita para marcar como recebido ou pendente.
+Em **Ajustes**, configure o dia padrão de pagamento do mesmo mês ou do mês seguinte. Em cada plantão, escolha uma **Data personalizada**, o dia padrão ou nenhuma previsão. Mudar os ajustes não altera as datas já salvas. Em meses curtos, dias 29–31 são limitados ao último dia do mês.
 
-## Abrir e instalar no iPhone
+O resumo da escala usa o mês do plantão; o financeiro usa o mês da previsão de pagamento.
 
-1. Instale o Xcode e o XcodeGen (`brew install xcodegen`) em um Mac.
-2. Na pasta do projeto, execute `xcodegen generate`.
-3. Abra `PlantaoNaMao.xcodeproj` e selecione o esquema `PlantaoNaMao`.
-4. Em **Signing & Capabilities**, selecione sua equipe Apple. Se necessário, ajuste o Bundle Identifier.
-5. Selecione o iPhone ou simulador e execute com **Run**.
+## Google e futura versão para Mac
 
-Para manter os dados da instalação anterior, use o mesmo Bundle Identifier e uma assinatura compatível, atualizando o app sem desinstalá-lo.
+Abra **Ajustes > Conta Google** e conecte sua conta. A sincronização tenta executar ao abrir, depois de alterações e periodicamente enquanto o aplicativo estiver ativo. Sem conexão, os registros permanecem no aparelho.
 
-## Compilação automática no GitHub
+**A integração exige que a API Google Drive e o consentimento OAuth estejam configurados no projeto Google Cloud do proprietário.** O Client ID público do projeto original e o retorno OAuth foram incluídos. Leia [GOOGLE_SYNC_SETUP.md](GOOGLE_SYNC_SETUP.md) para ativar, trocar as credenciais e testar em aparelhos reais.
 
-Em **Actions**, há dois workflows que executam automaticamente ao atualizar os arquivos na branch `main`, além de permitir **Run workflow**:
+A entrega 1.1 é para iPhone/iPad; o futuro aplicativo Mac poderá reutilizar os modelos, o formato de sincronização e o cliente Drive. O iOS pode suspender o aplicativo em segundo plano, portanto não há promessa de sincronização contínua com o app fechado.
 
-### Compilar Plantão na Mão iOS 1.0
+## Abrir no Xcode
 
-Valida as regras de cálculo, testa migração e PDFs no simulador, compila o app para iPhone/iPad e disponibiliza os arquivos em **Artifacts**:
+1. Instale Xcode 26 e XcodeGen em um Mac.
+2. Execute `xcodegen generate` na pasta do projeto.
+3. Abra `PlantaoNaMao.xcodeproj`, selecione o esquema `PlantaoNaMao` e aguarde a resolução do SDK oficial Google Sign-In via Swift Package Manager.
+4. Configure **Signing & Capabilities**, selecione seu iPhone ou simulador e use **Run**.
 
-- `PlantaoNaMao-1.0-sem-assinatura.ipa`
-- `PlantaoNaMao-Xcode.zip`
-- resultados dos testes
+Para manter os dados da instalação 1.0, atualize o aplicativo sem desinstalar, com o mesmo Bundle ID e uma assinatura compatível. Se alterar o Bundle ID ao assinar, configure também as credenciais OAuth correspondentes.
 
-**O IPA automático não está assinado.** Ele exige assinatura Apple e provisionamento antes da instalação. Não é um link de instalação direta nem um pacote TestFlight. Para TestFlight/App Store, use o projeto Xcode, configure sua equipe e faça **Product > Archive > Distribute App**.
+## Workflows automáticos
 
-### Extrair projeto iOS 1.0 automaticamente
+Os dois workflows executam ao atualizar os arquivos na branch `main` e também permitem **Run workflow**:
 
-Gera o projeto Xcode e disponibiliza um ZIP completo com os fontes, testes, configurações e workflows, pronto para abrir no Mac. Não tenta reconstruir código-fonte a partir de um IPA: usa os fontes recuperados do histórico deste repositório e atualizados nesta edição.
+- **Compilar Plantão na Mão iOS 1.1:** seleciona Xcode 26, testa regras de negócio, sincronização e PDFs, valida no simulador que o calendário fica fixo durante a rolagem, compila o app e disponibiliza IPA, projeto Xcode, resultados de testes e capturas de tela em **Artifacts**.
+- **Extrair projeto iOS 1.1 automaticamente:** gera e empacota o projeto Xcode completo com fontes, testes, workflows e orientações Google.
 
-## Dados e compatibilidade
+O IPA automático é **sem assinatura**. Para instalar, use uma assinatura Apple e provisionamento válidos. Para TestFlight/App Store, configure sua equipe no Xcode e use **Product > Archive > Distribute App**.
 
-Os plantões permanecem em `UserDefaults`, sob a chave original `plantao-na-mao.shifts`. Registros da versão anterior são lidos sem exigir campos financeiros. Em caso de falha na leitura, os bytes originais são preservados e as alterações são bloqueadas para evitar sobrescrita. Não há login, sincronização em nuvem ou integração OAuth nesta versão. Desinstalar o app pode apagar os registros locais. PDF é relatório, não backup restaurável.
+## Dados e migração
+
+A chave original `plantao-na-mao.shifts` é preservada. A versão 1.1 também grava o estado de sincronização com versões dos registros e marcadores de exclusão. Registros da versão 1.0 são migrados sem exigir campos novos. Dados ilegíveis são preservados e bloqueiam alterações para evitar sobrescrita.
+
+Cada dispositivo atualiza somente seu arquivo privado no Drive. Em conflito de edição do mesmo plantão, vence a alteração mais recente; exclusões persistidas impedem o retorno de cópias antigas. A conta vinculada é conferida antes de enviar dados. Desconectar mantém os registros locais. PDF é relatório, não backup restaurável.
 
 ## Validação
 
-Execute `bash scripts/check-models.sh` para validar valores em reais, datas de pagamento, virada de ano, ano bissexto, turnos noturnos, migração e filtros em dois fusos horários.
+Execute `bash scripts/check-models.sh` para verificar valores, datas, turnos noturnos, migração, filtros e conciliação entre dispositivos em dois fusos horários. Os testes iOS cobrem PDFs extensos, persistência, exclusões, erros de rede/permissão e layout fixo do calendário.
 
-Os testes iOS `PlantaoNaMaoTests` verificam persistência, proteção dos dados ilegíveis e PDFs com múltiplas páginas, texto final preservado e exclusão opcional das observações. Eles são executados no workflow de compilação.
+A autenticação Google e a sincronização entre aparelhos reais exigem credenciais e consentimento do usuário; os testes HTTP usam respostas simuladas.
 
 ## Origem
 
-Esta edição recupera o protótipo SwiftUI do arquivo `PlantaoNaMao-source.zip` presente no commit `3235ce4c832b0eb28d66b6e9cfdb4d5bbcce4290` deste repositório. Nenhum binário de terceiros, segredo ou recurso de assinatura foi incorporado.
+A edição 1.0 recuperou o protótipo SwiftUI do arquivo `PlantaoNaMao-source.zip` no commit `3235ce4c832b0eb28d66b6e9cfdb4d5bbcce4290` deste repositório. A edição 1.1 atualiza esse código, sem incorporar binários ou mecanismos de desbloqueio do aplicativo usado como referência visual.

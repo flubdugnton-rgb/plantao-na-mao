@@ -54,7 +54,26 @@ struct ModelChecks {
         shift.paymentDate = nil
         check(Reports.select([shift], kind: .payments, month: nil).count == 1, "Todo período inclui pagamentos sem data")
         check(Reports.select([shift], kind: .payments, month: date(2026, 11, 1)).isEmpty, "Sem data fica fora de um mês específico")
-        check(ShiftColor.allCases.count == 12, "Doze cores disponíveis")
+        check(ShiftColor.allCases.count == 24, "Vinte e quatro cores disponíveis")
+        let early = SyncRecord(shift: shift, modifiedAt: date(2026, 11, 1), writerID: "iPhone")
+        var newer = early; newer.modifiedAt = date(2026, 11, 2); newer.writerID = "Mac"; newer.shift.notes = "Editado no Mac"
+        let a = SyncSnapshot(records: [early])
+        let b = SyncSnapshot(records: [newer])
+        let merged = SyncMerge.combine([a, b])
+        check(merged.visibleShifts.first?.notes == "Editado no Mac", "Edição mais recente entre aparelhos")
+        check(merged == SyncMerge.combine([b, a]), "Mesclagem independe da ordem")
+        check(SyncMerge.combine([merged, merged]) == merged, "Sincronização repetida não duplica dados")
+        let deletion = SyncSnapshot(deletions: [SyncDeletion(id: shift.id, modifiedAt: date(2026, 11, 3), writerID: "iPhone")])
+        let deleted = SyncMerge.combine([merged, deletion])
+        check(deleted.visibleShifts.isEmpty, "Exclusão remove registro em outro dispositivo")
+        check(SyncMerge.combine([deleted, a]).visibleShifts.isEmpty, "Aparelho antigo não ressuscita exclusão")
+        var tied = newer; tied.writerID = "Z"; tied.shift.notes = "Empate"
+        check(SyncMerge.combine([SyncSnapshot(records: [tied]), b]) == SyncMerge.combine([b, SyncSnapshot(records: [tied])]), "Empate tem resultado determinístico")
+        let equalDeletion = SyncSnapshot(deletions: [SyncDeletion(id: shift.id, modifiedAt: newer.modifiedAt, writerID: "A")])
+        check(SyncMerge.combine([b, equalDeletion]).visibleShifts.isEmpty, "Exclusão prevalece em timestamp igual")
+        let syncData = try JSONEncoder().encode(deleted)
+        let syncRead = try JSONDecoder().decode(SyncSnapshot.self, from: syncData).validated()
+        check(syncRead == deleted, "Formato compartilhado entre iOS e futuro macOS")
         print("\(checks) verificações aprovadas · \(TimeZone.current.identifier)")
     }
 }

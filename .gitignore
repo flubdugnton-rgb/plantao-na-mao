@@ -12,3 +12,4 @@ xcuserdata/
 .env
 .swiftpm/
 *.xcodeproj/
+PlantaoNaMao/Info.plist
