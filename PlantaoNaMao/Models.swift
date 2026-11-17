@@ -47,17 +47,23 @@ struct Shift: Identifiable, Codable, Equatable {
     var amountCents = 0
     var paymentDate: Date?
     var isPaid = false
+    var pricingMode: PricingMode = .shift
+    var rateCents = 0
+    var createdAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, date, title, location, start, end, color, notes, amountCents, paymentDate, isPaid
+        case pricingMode, rateCents, createdAt
     }
 
     init(id: UUID = UUID(), date: Date, title: String, location: String, start: Date, end: Date,
          color: ShiftColor = .mint, notes: String = "", amountCents: Int = 0,
-         paymentDate: Date? = nil, isPaid: Bool = false) {
+         paymentDate: Date? = nil, isPaid: Bool = false, pricingMode: PricingMode = .shift,
+         rateCents: Int = 0, createdAt: Date? = Date()) {
         self.id = id; self.date = date; self.title = title; self.location = location
         self.start = start; self.end = end; self.color = color; self.notes = notes
         self.amountCents = amountCents; self.paymentDate = paymentDate; self.isPaid = isPaid
+        self.pricingMode = pricingMode; self.rateCents = rateCents; self.createdAt = createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -73,6 +79,9 @@ struct Shift: Identifiable, Codable, Equatable {
         amountCents = max(0, try c.decodeIfPresent(Int.self, forKey: .amountCents) ?? 0)
         paymentDate = try c.decodeIfPresent(Date.self, forKey: .paymentDate)
         isPaid = try c.decodeIfPresent(Bool.self, forKey: .isPaid) ?? false
+        pricingMode = try c.decodeIfPresent(PricingMode.self, forKey: .pricingMode) ?? .shift
+        rateCents = try c.decodeIfPresent(Int.self, forKey: .rateCents) ?? amountCents
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
     }
 
     var interval: DateInterval { ShiftRules.interval(day: date, start: start, end: end) }

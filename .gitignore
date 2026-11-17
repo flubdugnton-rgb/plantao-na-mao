@@ -13,3 +13,7 @@ xcuserdata/
 .swiftpm/
 *.xcodeproj/
 PlantaoNaMao/Info.plist
+
+PlantaoNaMaoWidgets/Info.plist
+PlantaoNaMao/*.entitlements
+PlantaoNaMaoWidgets/*.entitlements

@@ -2,113 +2,117 @@ import SwiftUI
 
 struct FinanceView: View {
     @EnvironmentObject private var store: ShiftStore
-    @State private var month = Date()
-    @State private var filter: PaymentFilter = .all
-    @State private var allDates = false
+    @State private var start = Calendar.current.dateInterval(of: .month, for: Date())!.start
+    @State private var end = Calendar.current.date(byAdding: .day, value: -1, to: Calendar.current.dateInterval(of: .month, for: Date())!.end)!
+    @State private var mode: PeriodMode = .dates
+    @State private var basis: DateBasis = .payment
     @State private var editing: Shift?
-    @State private var showingReports = false
-    private var monthly: [Shift] { Reports.select(store.shifts, kind: .payments, month: allDates ? nil : month) }
-    private var shown: [Shift] { monthly.filter { filter.includes($0) } }
+    @State private var showingPDF = false
+    @AppStorage("finance.inss.enabled") private var inssEnabled = false
+    @AppStorage("finance.inss.rate") private var inssRate = "0,00"
+    @AppStorage("finance.ir.enabled") private var irEnabled = false
+    @AppStorage("finance.ir.rate") private var irRate = "0,00"
+    private var period: FinancePeriod { FinancePeriod(start: start, end: end, mode: mode, basis: basis) }
+    private var items: [Shift] { period.select(store.shifts) }
+    private var plan: DeductionPlan { DeductionPlan(inssEnabled: inssEnabled, inssText: inssRate, irEnabled: irEnabled, irText: irRate) }
+    private var totals: FinancialTotals { plan.totals(gross: items.reduce(0) { $0 + $1.amountCents }) }
+    private var periodLabel: String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "pt_BR"); f.dateFormat = mode == .dates ? "dd/MM/yyyy" : "MM/yyyy"
+        return "\(basis.rawValue): \(f.string(from: start)) a \(f.string(from: end))"
+    }
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    Toggle("Todos os períodos", isOn: $allDates)
-                    if !allDates { DatePicker("Mês de pagamento", selection: $month, displayedComponents: .date) }
-                } footer: { Text("O financeiro considera o mês da previsão de pagamento, mesmo que o plantão aconteça em outro mês.") }
-                Section("Visão dos pagamentos") {
-                    summary("Previsto", monthly.reduce(0) { $0 + $1.amountCents }, icon: "banknote", color: .primary)
-                    summary("Recebido", monthly.filter(\.isPaid).reduce(0) { $0 + $1.amountCents }, icon: "checkmark.circle", color: .green)
-                    summary("A receber", monthly.filter { !$0.isPaid }.reduce(0) { $0 + $1.amountCents }, icon: "clock", color: .orange)
-                    let overdue = monthly.filter { $0.overdue() }
-                    if !overdue.isEmpty { summary("Em atraso", overdue.reduce(0) { $0 + $1.amountCents }, icon: "exclamationmark.circle", color: .red) }
+                Section("Selecione o período") {
+                    Picker("Selecionar por", selection: $mode) { ForEach(PeriodMode.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
+                        .onChange(of: mode) { _, value in basis = value == .competence ? .shift : .payment }
+                    Picker("Referência", selection: $basis) { ForEach(DateBasis.allCases) { Text($0.rawValue).tag($0) } }
+                    if mode == .dates {
+                        DatePicker("Data inicial", selection: $start, displayedComponents: .date)
+                        DatePicker("Data final", selection: $end, displayedComponents: .date)
+                    } else {
+                        MonthChoice(title: "Competência inicial", date: $start)
+                        MonthChoice(title: "Competência final", date: $end)
+                    }
+                    if period.bounds == nil { Text("O início precisa ser anterior ou igual ao fim.").foregroundStyle(.red) }
+                }
+                DeductionControls()
+                Section("Previsão do período") {
+                    LabeledContent("Plantões", value: "\(items.count)")
+                    LabeledContent("Horas", value: "\(items.reduce(0) { $0 + $1.minutes } / 60)h \(items.reduce(0) { $0 + $1.minutes } % 60)min")
+                    FinanceTotalsRows(totals: totals, valid: plan.valid)
                 }
                 Section {
-                    Picker("Situação", selection: $filter) { ForEach(PaymentFilter.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
-                    if shown.isEmpty { ContentUnavailableView("Sem pagamentos neste filtro", systemImage: "banknote", description: Text("Cadastre o valor e a previsão de pagamento nos seus plantões.")) }
-                    ForEach(shown) { shift in
+                    if items.isEmpty { ContentUnavailableView("Sem plantões neste período", systemImage: "calendar", description: Text("Confira as datas e se a referência é pagamento ou plantão.")) }
+                    ForEach(items) { shift in
                         Button { editing = shift } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack { Text(shift.title).font(.headline); Spacer(); Text(shift.amount).font(.headline) }
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack { Text(shift.title).font(.headline); Spacer(); Text(shift.amount).fontWeight(.semibold) }
                                 Text(shift.location).font(.subheadline).foregroundStyle(.secondary)
-                                HStack {
-                                    Text(shift.paymentDate.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "Sem previsão")
-                                    Spacer()
-                                    Text(shift.isPaid ? "Recebido" : shift.overdue() ? "Em atraso" : "A receber")
-                                        .foregroundStyle(shift.isPaid ? Color.green : shift.overdue() ? Color.red : Color.orange)
-                                }.font(.caption)
+                                Text((basis == .shift ? shift.date : shift.paymentDate ?? shift.date).formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
                             }.foregroundStyle(.primary).padding(.vertical, 4)
                         }.buttonStyle(.plain)
-                            .swipeActions(edge: .leading) {
-                                Button(shift.isPaid ? "Marcar pendente" : "Marcar recebido") { store.togglePaid(shift) }.tint(.green).disabled(!store.canWrite)
-                            }
                     }
-                } header: { Text("Pagamentos") } footer: { Text("Deslize um registro para a direita para atualizar o recebimento.") }
-                if !allDates {
-                    let undated = store.shifts.filter { $0.amountCents > 0 && $0.paymentDate == nil }
-                    if !undated.isEmpty {
-                        Section("Sem data de pagamento · \(undated.count)") {
-                            ForEach(undated) { shift in
-                                Button { editing = shift } label: {
-                                    HStack { Text(shift.title); Spacer(); Text(shift.amount) }
-                                }
-                            }
-                        }
-                    }
+                } header: { Text("Plantões considerados") } footer: {
+                    Text(basis == .payment ? "Plantões sem previsão de pagamento não entram neste filtro. Selecione a referência Plantão para incluí-los pela data trabalhada." : "O filtro considera a data de início de cada plantão. Na competência, todos os dias dos meses selecionados são incluídos.")
                 }
+            }.navigationTitle("Financeiro")
+                .toolbar { Button { showingPDF = true } label: { Image(systemName: "square.and.arrow.up") }.disabled(items.isEmpty || !plan.valid || period.bounds == nil).accessibilityLabel("Exportar previsão em PDF") }
+                .sheet(item: $editing) { ShiftEditor(date: $0.date, shift: $0) }
+                .sheet(isPresented: $showingPDF) { ReportView(month: start, initialKind: .payments, customShifts: items, customPeriod: periodLabel, financialSummary: totals.summary) }
+        }
+    }
+}
+
+struct MonthChoice: View {
+    let title: String
+    @Binding var date: Date
+    private var year: Int { Calendar.current.component(.year, from: date) }
+    private var month: Int { Calendar.current.component(.month, from: date) }
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title).font(.subheadline)
+            HStack {
+                Picker("Mês", selection: Binding(get: { month }, set: { set(year: year, month: $0) })) {
+                    ForEach(1...12, id: \.self) { n in Text(DateFormatter.brMonths[n - 1]).tag(n) }
+                }.labelsHidden()
+                Stepper("\(year.formatted(.number.grouping(.never)))", value: Binding(get: { year }, set: { set(year: $0, month: month) }), in: 1900...9999)
             }
-            .navigationTitle("Financeiro")
-            .toolbar { Button { showingReports = true } label: { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("Exportar pagamentos em PDF") }
-            .sheet(item: $editing) { ShiftEditor(date: $0.date, shift: $0) }
-            .sheet(isPresented: $showingReports) { ReportView(month: month, initialKind: .payments, initialAllDates: allDates, initialFilter: filter) }
         }
     }
-    private func summary(_ title: String, _ amount: Int, icon: String, color: Color) -> some View {
-        HStack { Label(title, systemImage: icon).foregroundStyle(color); Spacer(); Text(Money.format(amount)).fontWeight(.semibold) }
-    }
+    private func set(year: Int, month: Int) { date = Calendar.current.date(from: DateComponents(year: year, month: month, day: 1)) ?? date }
+}
+private extension DateFormatter {
+    static var brMonths: [String] { let f = DateFormatter(); f.locale = Locale(identifier: "pt_BR"); return f.monthSymbols.map { $0.capitalized } }
 }
 
-struct LocationsView: View {
-    @EnvironmentObject private var store: ShiftStore
+struct DeductionControls: View {
+    @AppStorage("finance.inss.enabled") private var inssEnabled = false
+    @AppStorage("finance.inss.rate") private var inssRate = "0,00"
+    @AppStorage("finance.ir.enabled") private var irEnabled = false
+    @AppStorage("finance.ir.rate") private var irRate = "0,00"
+    private var valid: Bool { DeductionPlan(inssEnabled: inssEnabled, inssText: inssRate, irEnabled: irEnabled, irText: irRate).valid }
     var body: some View {
-        NavigationStack {
-            List {
-                if store.locations.isEmpty {
-                    ContentUnavailableView("Seus locais de trabalho", systemImage: "building.2", description: Text("Os locais aparecem aqui quando você cadastra seus plantões."))
-                }
-                ForEach(store.locations, id: \.self) { location in
-                    NavigationLink {
-                        LocationDetailView(location: location)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "building.2.crop.circle.fill").font(.title).foregroundStyle(.tint)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(location).font(.headline)
-                                Text("\(store.shifts.filter { $0.location == location }.count) plantões cadastrados").font(.caption).foregroundStyle(.secondary)
-                            }
-                        }.padding(.vertical, 6)
-                    }
-                }
-            }.navigationTitle("Locais de trabalho")
+        Section {
+            Toggle("Descontar INSS", isOn: $inssEnabled)
+            if inssEnabled { MoneyEntry(title: "INSS (%)", text: $inssRate) }
+            Toggle("Descontar imposto de renda", isOn: $irEnabled)
+            if irEnabled { MoneyEntry(title: "Imposto de renda (%)", text: $irRate) }
+            if !valid { Text("Informe percentuais entre 0 e 100. A soma não pode ultrapassar 100%.").foregroundStyle(.red).font(.caption) }
+        } header: { Text("Descontos opcionais") } footer: {
+            Text("Cada percentual é aplicado diretamente sobre o valor bruto. Valores estimados, definidos por você; não usamos tabelas oficiais de INSS ou imposto de renda.")
         }
     }
 }
-
-struct LocationDetailView: View {
-    @EnvironmentObject private var store: ShiftStore
-    let location: String
-    @State private var editing: Shift?
+struct FinanceTotalsRows: View {
+    let totals: FinancialTotals
+    let valid: Bool
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(store.shifts.filter { $0.location == location }.sorted { $0.interval.start > $1.interval.start }) { shift in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(shift.date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
-                        Button { editing = shift } label: { ShiftRow(shift: shift) }.buttonStyle(.plain)
-                    }
-                }
-            }.padding()
-        }.background(Color(.systemGroupedBackground)).navigationTitle(location)
-            .sheet(item: $editing) { ShiftEditor(date: $0.date, shift: $0) }
+        LabeledContent("Previsto bruto", value: Money.format(totals.gross)).fontWeight(.semibold)
+        if valid {
+            LabeledContent("INSS estimado", value: Money.format(totals.inss))
+            LabeledContent("Imposto de renda estimado", value: Money.format(totals.incomeTax))
+            LabeledContent("Previsto líquido", value: Money.format(totals.net)).font(.headline).foregroundStyle(.tint)
+        }
     }
 }

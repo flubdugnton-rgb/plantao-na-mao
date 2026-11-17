@@ -13,7 +13,7 @@ final class CalendarLayoutTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Tudo sob controle.\nUm plantão por vez."].exists)
         let before = calendar.frame
         attach(name: "01-Escala-Liquid-Glass")
-        let agenda = app.scrollViews["scrolling-agenda"]
+        let agenda = app.descendants(matching: .any)["scrolling-agenda"]
         XCTAssertTrue(agenda.exists)
         agenda.swipeUp()
         agenda.swipeUp()

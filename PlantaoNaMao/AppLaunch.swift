@@ -12,6 +12,7 @@ enum AppLaunch {
         isUITest ? Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 17))! : Date()
     }
     static func makeStore() -> ShiftStore {
+        UserDefaults.standard.set(ShiftColor.mint.rawValue, forKey: "plantao-na-mao.theme")
         guard isUITest else { return ShiftStore() }
         let suite = "PlantaoNaMao.ui-testing"
         let defaults = UserDefaults(suiteName: suite)!

@@ -13,13 +13,13 @@ struct SyncDeletion: Codable, Equatable {
 }
 
 struct SyncSnapshot: Codable, Equatable {
-    var schemaVersion = 1
+    var schemaVersion = 2
     var records: [SyncRecord] = []
     var deletions: [SyncDeletion] = []
     var visibleShifts: [Shift] { records.map(\.shift).sorted { $0.interval.start < $1.interval.start } }
 
     func validated() throws -> SyncSnapshot {
-        guard schemaVersion == 1 else { throw SyncFailure.newerVersion }
+        guard schemaVersion == 1 || schemaVersion == 2 else { throw SyncFailure.newerVersion }
         return SyncMerge.combine([self])
     }
 }

@@ -39,7 +39,7 @@ struct SettingsView: View {
                     Picker("Aparência", selection: $appearance) {
                         Text("Automática").tag("system"); Text("Clara").tag("light"); Text("Escura").tag("dark")
                     }
-                    ColorChoices(selection: Binding(get: { ShiftColor(rawValue: theme) ?? .mint }, set: { theme = $0.rawValue }))
+
                 }
                 Section {
                     Stepper("Dia de pagamento: \(paymentDay)", value: $paymentDay, in: 1...31)
@@ -54,9 +54,15 @@ struct SettingsView: View {
                 Section("Plantão na Mão") {
                     Label("Dados salvos neste dispositivo", systemImage: "lock.shield")
                     Text("Seus registros ficam disponíveis sem internet. Desinstalar o app pode apagar os dados locais.").font(.footnote).foregroundStyle(.secondary)
-                    LabeledContent("Versão", value: "1.1 · Liquid Glass")
+                    LabeledContent("Versão", value: "1.2 · Plantões e widgets")
+                }
+                Section("Widgets") {
+                    Label("Pequeno, médio e grande", systemImage: "square.grid.2x2")
+                    Text("Na tela inicial do iPhone, mantenha pressionado, toque em Editar > Adicionar Widget e procure Plantão na Mão. O widget acompanha os aros e a aparência do app. Atualizações são solicitadas ao salvar e sincronizar; o iOS controla o momento da exibição.").font(.footnote).foregroundStyle(.secondary)
+                    if !WidgetBridge.available { Text("O compartilhamento com widgets não está disponível nesta assinatura. O app e a extensão precisam estar assinados com o mesmo App Group.").font(.footnote).foregroundStyle(.orange) }
                 }
             }.navigationTitle("Ajustes")
+                .onChange(of: appearance) { _, _ in WidgetBridge.refreshAppearance() }
                 .sheet(isPresented: $showingReports) { ReportView(month: .now) }
         }
     }

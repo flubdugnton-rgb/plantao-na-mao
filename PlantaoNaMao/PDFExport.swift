@@ -28,6 +28,9 @@ struct ReportView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("plantao-na-mao.theme") private var theme = ShiftColor.mint.rawValue
     private let singleShift: Shift?
+    private let customShifts: [Shift]?
+    private let customPeriod: String?
+    private let financialSummary: [String]
     @State private var month: Date
     @State private var kind: ReportKind
     @State private var allDates: Bool
@@ -39,17 +42,20 @@ struct ReportView: View {
     @State private var error: String?
 
     init(month: Date, singleShift: Shift? = nil, initialKind: ReportKind = .schedule,
-         initialAllDates: Bool = false, initialFilter: PaymentFilter = .all) {
+         initialAllDates: Bool = false, initialFilter: PaymentFilter = .all, customShifts: [Shift]? = nil, customPeriod: String? = nil, financialSummary: [String] = []) {
         self.singleShift = singleShift
+        self.customShifts = customShifts; self.customPeriod = customPeriod; self.financialSummary = financialSummary
         _month = State(initialValue: month); _kind = State(initialValue: initialKind)
         _allDates = State(initialValue: initialAllDates); _filter = State(initialValue: initialFilter)
     }
     private var items: [Shift] {
+        if let customShifts { return customShifts }
         if let singleShift { return [singleShift] }
         return Reports.select(store.shifts, kind: kind, month: allDates ? nil : month, filter: kind == .schedule ? .all : filter)
     }
     private var period: String {
-        singleShift != nil ? "Plantão individual" : allDates ? "Todo o período" : month.formatted(.dateTime.month(.wide).year()).capitalized
+        if let customPeriod { return customPeriod }
+        return singleShift != nil ? "Plantão individual" : allDates ? "Todo o período" : month.formatted(.dateTime.month(.wide).year()).capitalized
     }
     private var filename: String {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM"; f.locale = Locale(identifier: "en_US_POSIX")
@@ -62,12 +68,12 @@ struct ReportView: View {
                     Label("Sua rotina em PDF", systemImage: "doc.richtext").font(.title3.bold()).padding(.vertical, 6)
                     Text("Um relatório organizado para guardar, imprimir ou enviar.").foregroundStyle(.secondary)
                 }
-                if singleShift == nil {
+                if singleShift == nil && customShifts == nil {
                     Section("Conteúdo") {
                         Picker("Relatório", selection: $kind) { ForEach(ReportKind.allCases) { Text($0.rawValue).tag($0) } }
                         Toggle("Todo o período", isOn: $allDates)
                         if !allDates { DatePicker(kind == .schedule ? "Mês dos plantões" : "Mês dos pagamentos", selection: $month, displayedComponents: .date) }
-                        if kind == .payments { Picker("Situação", selection: $filter) { ForEach(PaymentFilter.allCases) { Text($0.rawValue).tag($0) } } }
+
                     }
                 }
                 Section {
@@ -104,13 +110,13 @@ struct ReportView: View {
     }
     private func generate() -> Data {
         PDFReport.make(shifts: items, title: singleShift == nil ? kind.rawValue : "Detalhes do plantão", period: period,
-                       includeNotes: includeNotes, color: UIColor((ShiftColor(rawValue: theme) ?? .mint).value))
+                       includeNotes: includeNotes, color: UIColor(ShiftColor.mint.value), summary: financialSummary)
     }
 }
 
 enum PDFReport {
     // A4 in points. Text is drawn as selectable text, not as a screenshot.
-    static func make(shifts: [Shift], title: String, period: String, includeNotes: Bool, color: UIColor) -> Data {
+    static func make(shifts: [Shift], title: String, period: String, includeNotes: Bool, color: UIColor, summary: [String] = []) -> Data {
         let bounds = CGRect(x: 0, y: 0, width: 595.28, height: 841.89)
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = [kCGPDFContextTitle as String: "Plantão na Mão · \(title)", kCGPDFContextCreator as String: "Plantão na Mão"]
@@ -163,14 +169,14 @@ enum PDFReport {
             }
             beginPage()
             paragraph("\(shifts.count) plantões · \(shifts.reduce(0) { $0 + $1.minutes } / 60)h \(shifts.reduce(0) { $0 + $1.minutes } % 60)min · Total: \(Money.format(shifts.reduce(0) { $0 + $1.amountCents }))", font: heading)
-            paragraph("Recebido: \(Money.format(shifts.filter(\.isPaid).reduce(0) { $0 + $1.amountCents })) · A receber: \(Money.format(shifts.filter { !$0.isPaid }.reduce(0) { $0 + $1.amountCents }))")
+            for line in summary { paragraph(line) }
             y += 14
             for (index, shift) in shifts.enumerated() {
                 ensure(110)
                 paragraph("\(index + 1). \(shift.title)", font: heading, ink: color)
                 paragraph("Local: \(shift.location)")
                 paragraph("Plantão: \(dateFormat.string(from: shift.interval.start)) às \(timeFormat.string(from: shift.interval.start)) até \(dateFormat.string(from: shift.interval.end)) às \(timeFormat.string(from: shift.interval.end)) · \(shift.duration)")
-                paragraph("Valor: \(shift.amount) · \(shift.amountCents == 0 ? "Sem valor informado" : shift.isPaid ? "Recebido" : shift.overdue() ? "Em atraso" : "A receber")")
+                paragraph("Valor: \(shift.amount) · \(shift.amountCents == 0 ? "Sem valor informado" : "Previsto")")
                 paragraph("Previsão de pagamento: \(shift.paymentDate.map { dateFormat.string(from: $0) } ?? "Não informada")")
                 if includeNotes && !shift.notes.isEmpty { paragraph("Observações: \(shift.notes)") }
                 y += 8; ensure(8)

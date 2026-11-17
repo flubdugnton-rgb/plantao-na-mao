@@ -14,17 +14,21 @@ struct PlantaoNaMaoApp: App {
                 .tint((ShiftColor(rawValue: theme) ?? .mint).value)
                 .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
                 .environment(\.locale, Locale(identifier: "pt_BR"))
-                .onOpenURL { GIDSignIn.sharedInstance.handle($0) }
+                .onOpenURL { url in
+                    if url.scheme == "plantaonamao" { UserDefaults.standard.set(url.absoluteString, forKey: "widget.pendingURL"); NotificationCenter.default.post(name: .widgetDateSelected, object: url) }
+                    else { GIDSignIn.sharedInstance.handle(url) }
+                }
                 .task { await cloud.start(store: store) }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { Task { await cloud.resume() } }
-                    else { cloud.pause() }
+                    else { cloud.pause(); WidgetBridge.publish(store.shifts) }
                 }
         }
     }
 }
 
 struct ContentView: View {
+    @State private var tab = 0
     @EnvironmentObject private var store: ShiftStore
     var body: some View {
         VStack(spacing: 0) {
@@ -32,13 +36,14 @@ struct ContentView: View {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote).padding().background(Color.orange.opacity(0.15))
             }
-            TabView {
-                ScheduleView().tabItem { Label("Plantões", systemImage: "calendar") }
-                FinanceView().tabItem { Label("Financeiro", systemImage: "chart.bar.xaxis") }
-                LocationsView().tabItem { Label("Locais", systemImage: "building.2") }
-                SettingsView().tabItem { Label("Ajustes", systemImage: "slider.horizontal.3") }
+            TabView(selection: $tab) {
+                ScheduleView().tabItem { Label("Plantões", systemImage: "calendar") }.tag(0)
+                FinanceView().tabItem { Label("Financeiro", systemImage: "chart.bar.xaxis") }.tag(1)
+                DashboardView().tabItem { Label("Painel", systemImage: "chart.bar.fill") }.tag(2)
+                LocationsView().tabItem { Label("Locais", systemImage: "building.2") }.tag(3)
+                SettingsView().tabItem { Label("Ajustes", systemImage: "slider.horizontal.3") }.tag(4)
             }
-        }
+        }.onReceive(NotificationCenter.default.publisher(for: .widgetDateSelected)) { _ in tab = 0 }
     }
 }
 
@@ -49,13 +54,14 @@ struct ScheduleView: View {
     @State private var showingEditor = false
     @State private var editing: Shift?
     @State private var showingReports = false
+    @State private var pendingDeletion: Shift?
     private var accent: Color { (ShiftColor(rawValue: theme) ?? .mint).value }
     private var monthly: [Shift] { Reports.select(store.shifts, kind: .schedule, month: selectedDate) }
     private var daysAhead: [Date] {
-        let calendar = Calendar.current
-        let today = calendar.component(.day, from: selectedDate)
-        let count = calendar.range(of: .day, in: .month, for: selectedDate)?.count ?? today
-        return (today...count).compactMap { calendar.date(byAdding: .day, value: $0 - today, to: calendar.startOfDay(for: selectedDate)) }
+        let c = Calendar.current
+        let first = c.dateInterval(of: .month, for: selectedDate)!.start
+        let count = c.range(of: .day, in: .month, for: selectedDate)!.count
+        return (0..<count).compactMap { c.date(byAdding: .day, value: $0, to: first) }
     }
     var body: some View {
         NavigationStack {
@@ -82,9 +88,19 @@ struct ScheduleView: View {
                     Button { showingEditor = true } label: { Image(systemName: "plus") }.accessibilityLabel("Adicionar plantão").disabled(!store.canWrite)
                 }
             }
+            .alert("Excluir este plantão?", isPresented: Binding(get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } })) {
+                Button("Cancelar", role: .cancel) { pendingDeletion = nil }
+                Button("Excluir", role: .destructive) { if let item = pendingDeletion { store.remove(item) }; pendingDeletion = nil }
+            } message: { Text("O plantão e sua previsão de pagamento serão removidos. Esta alteração também será sincronizada.") }
             .sheet(isPresented: $showingEditor) { ShiftEditor(date: selectedDate) }
             .sheet(item: $editing) { ShiftEditor(date: $0.date, shift: $0) }
             .sheet(isPresented: $showingReports) { ReportView(month: selectedDate) }
+            .onAppear { applyWidgetURL() }
+            .onReceive(NotificationCenter.default.publisher(for: .widgetDateSelected)) { event in
+                guard let url = event.object as? URL, let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "date" })?.value else { return }
+                let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
+                if let date = f.date(from: value) { selectedDate = date }
+            }
         }
     }
     private func monthHeader(compact: Bool) -> some View {
@@ -113,29 +129,45 @@ struct ScheduleView: View {
         }.padding(.horizontal, 22).padding(.top, 8)
     }
     private var agenda: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 22) {
+        ScrollViewReader { proxy in
+            List {
                 ForEach(daysAhead, id: \.self) { day in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(day.formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Calendar.current.isDate(day, inSameDayAs: selectedDate) ? accent : Color.secondary)
+                    Section {
                         let items = store.on(day)
                         if items.isEmpty {
-                            HStack(spacing: 12) {
-                                RoundedRectangle(cornerRadius: 2).fill(Color.secondary.opacity(0.18)).frame(width: 4, height: 34)
-                                Text("Sem plantão").font(.subheadline).foregroundStyle(.secondary)
-                            }
+                            Label("Sem plantão", systemImage: "minus").font(.subheadline).foregroundStyle(.secondary)
+                                .listRowBackground(Color.clear)
                         }
                         ForEach(items) { shift in
                             Button { editing = shift } label: { ShiftRow(shift: shift) }.buttonStyle(.plain)
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button { pendingDeletion = shift } label: { Label("Excluir", systemImage: "trash") }.tint(.red).disabled(!store.canWrite)
+                                    Button { editing = shift } label: { Label("Editar", systemImage: "pencil") }.tint(.orange).disabled(!store.canWrite)
+                                }
                         }
+                    } header: {
+                        Text(day.formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Calendar.current.isDate(day, inSameDayAs: selectedDate) ? accent : Color.secondary)
+                    }.id(day)
+                }
+            }.listStyle(.plain).scrollContentBackground(.hidden)
+                .accessibilityIdentifier("scrolling-agenda")
+                .onChange(of: selectedDate) { _, value in
+                    Task { @MainActor in
+                        await Task.yield()
+                        withAnimation { proxy.scrollTo(Calendar.current.startOfDay(for: value), anchor: .top) }
                     }
                 }
-            }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
         }
-        .id(Calendar.current.startOfDay(for: selectedDate))
-        .accessibilityIdentifier("scrolling-agenda")
+    }
+    private func applyWidgetURL() {
+        guard let string = UserDefaults.standard.string(forKey: "widget.pendingURL"), let url = URL(string: string), let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "date" })?.value else { return }
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
+        if let date = f.date(from: value) { selectedDate = date }
+        UserDefaults.standard.removeObject(forKey: "widget.pendingURL")
     }
     private func moveMonth(_ delta: Int) {
         selectedDate = Calendar.current.date(byAdding: .month, value: delta, to: selectedDate) ?? selectedDate
@@ -211,13 +243,13 @@ struct ShiftRow: View {
                 Text(shift.title).font(.headline)
                 Text(shift.location).font(.subheadline).foregroundStyle(.secondary)
                 if shift.amountCents > 0 {
-                    Text("\(shift.amount) · \(shift.isPaid ? "Recebido" : "A receber")").font(.caption.weight(.semibold))
+                    Text("\(shift.amount) · Previsto").font(.caption.weight(.semibold))
                     if let due = shift.paymentDate { Text("Pagamento: \(due.formatted(date: .abbreviated, time: .omitted))").font(.caption2).foregroundStyle(shift.overdue() ? Color.red : Color.secondary) }
                 }
             }
             Spacer(minLength: 0)
             VStack(alignment: .trailing, spacing: 6) {
-                Text("\(shift.start.formatted(date: .omitted, time: .shortened))–\(shift.end.formatted(date: .omitted, time: .shortened))").font(.subheadline.monospacedDigit())
+                Text("\(shift.start.clock24)–\(shift.end.clock24)").font(.subheadline.monospacedDigit())
                 Text(shift.duration).font(.caption).foregroundStyle(.secondary)
             }
             Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)

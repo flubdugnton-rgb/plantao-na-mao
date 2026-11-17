@@ -70,4 +70,22 @@ final class PDFTests: XCTestCase {
         XCTAssertTrue(reopened.shifts.isEmpty)
         XCTAssertEqual(reopened.snapshot.deletions.count, 1)
     }
+    func testRecentTemplatesFollowCreationRatherThanShiftDate() throws {
+        let suite = "RecentTemplates-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ShiftStore(defaults: defaults)
+        for i in 0..<4 {
+            let date = Date(timeIntervalSince1970: Double(10 - i) * 86400)
+            store.save(Shift(date: date, title: "Modelo \(i)", location: "Hospital", start: date, end: date, createdAt: Date(timeIntervalSince1970: Double(i))))
+        }
+        XCTAssertEqual(store.recent.map(\.title), ["Modelo 3", "Modelo 2", "Modelo 1"])
+        var old = try XCTUnwrap(store.shifts.first { $0.title == "Modelo 0" })
+        old.notes = "Editar não é adicionar"
+        store.save(old)
+        XCTAssertEqual(store.recent.first?.title, "Modelo 3")
+        store.remove(try XCTUnwrap(store.recent.first))
+        XCTAssertEqual(store.recent.first?.title, "Modelo 2")
+    }
+
 }
