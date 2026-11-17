@@ -56,3 +56,24 @@ struct DashboardView: View {
         }
     }
 }
+
+// The dashboard compares complete months. Finance uses exact date pickers instead.
+private struct MonthChoice: View {
+    let title: String
+    @Binding var date: Date
+    private var year: Int { Calendar.current.component(.year, from: date) }
+    private var month: Int { Calendar.current.component(.month, from: date) }
+    private var months: [String] { let f = DateFormatter(); f.locale = Locale(identifier: "pt_BR"); return f.monthSymbols.map { $0.capitalized } }
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title).font(.subheadline)
+            HStack {
+                Picker("Mês", selection: Binding(get: { month }, set: { set(year: year, month: $0) })) {
+                    ForEach(1...12, id: \.self) { n in Text(months[n - 1]).tag(n) }
+                }.labelsHidden()
+                Stepper("\(year.formatted(.number.grouping(.never)))", value: Binding(get: { year }, set: { set(year: $0, month: month) }), in: 1900...9999)
+            }
+        }
+    }
+    private func set(year: Int, month: Int) { date = Calendar.current.date(from: DateComponents(year: year, month: month, day: 1)) ?? date }
+}

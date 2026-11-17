@@ -3,6 +3,8 @@ import GoogleSignIn
 
 struct SettingsView: View {
     @EnvironmentObject private var cloud: GoogleSyncController
+    @EnvironmentObject private var store: ShiftStore
+    @State private var widgetStatus: String?
     @AppStorage("plantao-na-mao.theme") private var theme = ShiftColor.mint.rawValue
     @AppStorage("plantao-na-mao.appearance") private var appearance = "system"
     @AppStorage("plantao-na-mao.paymentDay") private var paymentDay = 5
@@ -54,16 +56,27 @@ struct SettingsView: View {
                 Section("Plantão na Mão") {
                     Label("Dados salvos neste dispositivo", systemImage: "lock.shield")
                     Text("Seus registros ficam disponíveis sem internet. Desinstalar o app pode apagar os dados locais.").font(.footnote).foregroundStyle(.secondary)
-                    LabeledContent("Versão", value: "1.2 · Plantões e widgets")
+                    LabeledContent("Versão", value: "1.3 · Plantões e widgets")
                 }
                 Section("Widgets") {
                     Label("Pequeno, médio e grande", systemImage: "square.grid.2x2")
                     Text("Na tela inicial do iPhone, mantenha pressionado, toque em Editar > Adicionar Widget e procure Plantão na Mão. O widget acompanha os aros e a aparência do app. Atualizações são solicitadas ao salvar e sincronizar; o iOS controla o momento da exibição.").font(.footnote).foregroundStyle(.secondary)
+                    Button { refreshWidget() } label: { Label("Atualizar widget agora", systemImage: "arrow.clockwise") }.disabled(!store.canWrite)
+                    if let status = widgetStatus { Text(status).font(.footnote).foregroundStyle(.secondary) }
                     if !WidgetBridge.available { Text("O compartilhamento com widgets não está disponível nesta assinatura. O app e a extensão precisam estar assinados com o mesmo App Group.").font(.footnote).foregroundStyle(.orange) }
                 }
             }.navigationTitle("Ajustes")
+                .onAppear { refreshWidget() }
                 .onChange(of: appearance) { _, _ in WidgetBridge.refreshAppearance() }
                 .sheet(isPresented: $showingReports) { ReportView(month: .now) }
+        }
+    }
+    private func refreshWidget() {
+        guard store.canWrite else { return }
+        if WidgetBridge.publish(store.shifts) {
+            widgetStatus = "Dados enviados ao widget: \(store.shifts.count) plantões. Atualização solicitada ao iOS."
+        } else {
+            widgetStatus = WidgetBridge.available ? "Não foi possível enviar os dados. Tente novamente." : "Sem acesso ao compartilhamento nesta assinatura. Ative o mesmo App Group no app e no widget ao assinar."
         }
     }
     private var googleButton: some View {

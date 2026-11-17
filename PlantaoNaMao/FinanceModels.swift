@@ -24,8 +24,9 @@ struct FinancePeriod {
     var basis: DateBasis
     var bounds: DateInterval? {
         let c = Calendar.current
-        let first = mode == .dates ? c.startOfDay(for: start) : c.dateInterval(of: .month, for: start)!.start
-        let last = mode == .dates ? c.date(byAdding: .day, value: 1, to: c.startOfDay(for: end))! : c.dateInterval(of: .month, for: end)!.end
+        // Both selectors accept exact dates; the final day is inclusive.
+        let first = c.startOfDay(for: start)
+        let last = c.date(byAdding: .day, value: 1, to: c.startOfDay(for: end))!
         return first < last ? DateInterval(start: first, end: last) : nil
     }
     func select(_ shifts: [Shift]) -> [Shift] {

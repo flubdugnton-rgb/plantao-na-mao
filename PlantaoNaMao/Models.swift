@@ -84,6 +84,17 @@ struct Shift: Identifiable, Codable, Equatable {
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
     }
 
+    // A preset is a new record on the chosen day, never an edit of the source.
+    func reused(on day: Date, paymentDay: Int, nextMonth: Bool, calendar: Calendar = .current) -> Shift {
+        let interval = ShiftRules.interval(day: day, start: start, end: end, calendar: calendar)
+        let rate = pricingMode == .hour ? rateCents : amountCents
+        return Shift(date: calendar.startOfDay(for: day), title: title, location: location,
+                     start: interval.start, end: interval.end, color: color, notes: notes,
+                     amountCents: pricingMode.total(rateCents: rate, minutes: Int(interval.duration / 60)),
+                     paymentDate: paymentDate == nil ? nil : ShiftRules.paymentDate(for: day, day: paymentDay, nextMonth: nextMonth, calendar: calendar),
+                     pricingMode: pricingMode, rateCents: rate)
+    }
+
     var interval: DateInterval { ShiftRules.interval(day: date, start: start, end: end) }
     var minutes: Int { Int(interval.duration / 60) }
     var duration: String { "\(minutes / 60)h\(minutes % 60 == 0 ? "" : " \(minutes % 60)min")" }

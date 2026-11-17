@@ -30,12 +30,14 @@ final class ShiftStore: ObservableObject {
         catch { storageError = "Não foi possível ler seus plantões. Os dados originais foram preservados. Feche e reabra o app ou restaure seu backup antes de fazer alterações." }
     }
 
-    func save(_ shift: Shift) {
-        guard canWrite else { return }
+    @discardableResult
+    func save(_ shift: Shift) -> Bool {
+        guard canWrite else { return false }
         var updated = snapshot
         updated.records.removeAll { $0.shift.id == shift.id }
         updated.records.append(SyncRecord(shift: shift, modifiedAt: timestamp(for: shift.id), writerID: deviceID))
         persist(updated, localChange: true)
+        return canWrite && shifts.contains(where: { $0.id == shift.id })
     }
     func remove(_ shift: Shift) {
         guard canWrite else { return }

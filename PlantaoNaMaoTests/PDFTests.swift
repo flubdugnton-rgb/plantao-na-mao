@@ -88,4 +88,24 @@ final class PDFTests: XCTestCase {
         XCTAssertEqual(store.recent.first?.title, "Modelo 2")
     }
 
+    func testPresetCreatesSeparateShiftOnChosenDayAndSurvivesRelaunch() throws {
+        let suite = "PresetSaving-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let c = Calendar.current
+        let oldDay = c.date(from: DateComponents(year: 2026, month: 11, day: 17))!
+        let chosenDay = c.date(from: DateComponents(year: 2026, month: 11, day: 20))!
+        let source = Shift(date: oldDay, title: "MT UCE", location: "HRC", start: c.date(bySettingHour: 7, minute: 0, second: 0, of: oldDay)!, end: c.date(bySettingHour: 19, minute: 0, second: 0, of: oldDay)!, color: .red, amountCents: 31632, paymentDate: oldDay, pricingMode: .hour, rateCents: 2636)
+        let store = ShiftStore(defaults: defaults)
+        XCTAssertTrue(store.save(source))
+        let preset = source.reused(on: chosenDay, paymentDay: 5, nextMonth: true)
+        XCTAssertTrue(store.save(preset))
+        let reopened = ShiftStore(defaults: defaults)
+        XCTAssertEqual(reopened.shifts.count, 2)
+        XCTAssertEqual(reopened.on(oldDay), [source])
+        XCTAssertEqual(reopened.on(chosenDay), [preset])
+        XCTAssertNotEqual(source.id, preset.id)
+        XCTAssertEqual(reopened.on(chosenDay).first?.amountCents, 31632)
+    }
+
 }

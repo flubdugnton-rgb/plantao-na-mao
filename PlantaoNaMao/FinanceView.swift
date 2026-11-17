@@ -17,7 +17,7 @@ struct FinanceView: View {
     private var plan: DeductionPlan { DeductionPlan(inssEnabled: inssEnabled, inssText: inssRate, irEnabled: irEnabled, irText: irRate) }
     private var totals: FinancialTotals { plan.totals(gross: items.reduce(0) { $0 + $1.amountCents }) }
     private var periodLabel: String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "pt_BR"); f.dateFormat = mode == .dates ? "dd/MM/yyyy" : "MM/yyyy"
+        let f = DateFormatter(); f.locale = Locale(identifier: "pt_BR"); f.dateFormat = "dd/MM/yyyy"
         return "\(basis.rawValue): \(f.string(from: start)) a \(f.string(from: end))"
     }
     var body: some View {
@@ -27,13 +27,10 @@ struct FinanceView: View {
                     Picker("Selecionar por", selection: $mode) { ForEach(PeriodMode.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
                         .onChange(of: mode) { _, value in basis = value == .competence ? .shift : .payment }
                     Picker("Referência", selection: $basis) { ForEach(DateBasis.allCases) { Text($0.rawValue).tag($0) } }
-                    if mode == .dates {
-                        DatePicker("Data inicial", selection: $start, displayedComponents: .date)
-                        DatePicker("Data final", selection: $end, displayedComponents: .date)
-                    } else {
-                        MonthChoice(title: "Competência inicial", date: $start)
-                        MonthChoice(title: "Competência final", date: $end)
-                    }
+                    DatePicker(mode == .dates ? "Data inicial" : "Competência inicial", selection: $start, displayedComponents: .date)
+                        .accessibilityIdentifier("finance-start")
+                    DatePicker(mode == .dates ? "Data final" : "Competência final", selection: $end, displayedComponents: .date)
+                        .accessibilityIdentifier("finance-end")
                     if period.bounds == nil { Text("O início precisa ser anterior ou igual ao fim.").foregroundStyle(.red) }
                 }
                 DeductionControls()
@@ -54,7 +51,7 @@ struct FinanceView: View {
                         }.buttonStyle(.plain)
                     }
                 } header: { Text("Plantões considerados") } footer: {
-                    Text(basis == .payment ? "Plantões sem previsão de pagamento não entram neste filtro. Selecione a referência Plantão para incluí-los pela data trabalhada." : "O filtro considera a data de início de cada plantão. Na competência, todos os dias dos meses selecionados são incluídos.")
+                    Text(basis == .payment ? "Plantões sem previsão de pagamento não entram neste filtro. Selecione a referência Plantão para incluí-los pela data trabalhada." : "O filtro considera a data de início de cada plantão. Escolha dia, mês e ano; as duas datas selecionadas são incluídas.")
                 }
             }.navigationTitle("Financeiro")
                 .toolbar { Button { showingPDF = true } label: { Image(systemName: "square.and.arrow.up") }.disabled(items.isEmpty || !plan.valid || period.bounds == nil).accessibilityLabel("Exportar previsão em PDF") }
@@ -62,28 +59,6 @@ struct FinanceView: View {
                 .sheet(isPresented: $showingPDF) { ReportView(month: start, initialKind: .payments, customShifts: items, customPeriod: periodLabel, financialSummary: totals.summary) }
         }
     }
-}
-
-struct MonthChoice: View {
-    let title: String
-    @Binding var date: Date
-    private var year: Int { Calendar.current.component(.year, from: date) }
-    private var month: Int { Calendar.current.component(.month, from: date) }
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text(title).font(.subheadline)
-            HStack {
-                Picker("Mês", selection: Binding(get: { month }, set: { set(year: year, month: $0) })) {
-                    ForEach(1...12, id: \.self) { n in Text(DateFormatter.brMonths[n - 1]).tag(n) }
-                }.labelsHidden()
-                Stepper("\(year.formatted(.number.grouping(.never)))", value: Binding(get: { year }, set: { set(year: $0, month: month) }), in: 1900...9999)
-            }
-        }
-    }
-    private func set(year: Int, month: Int) { date = Calendar.current.date(from: DateComponents(year: year, month: month, day: 1)) ?? date }
-}
-private extension DateFormatter {
-    static var brMonths: [String] { let f = DateFormatter(); f.locale = Locale(identifier: "pt_BR"); return f.monthSymbols.map { $0.capitalized } }
 }
 
 struct DeductionControls: View {

@@ -20,7 +20,7 @@ struct PlantaoNaMaoApp: App {
                 }
                 .task { await cloud.start(store: store) }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { Task { await cloud.resume() } }
+                    if phase == .active { WidgetBridge.publish(store.shifts); Task { await cloud.resume() } }
                     else { cloud.pause(); WidgetBridge.publish(store.shifts) }
                 }
         }
@@ -47,11 +47,16 @@ struct ContentView: View {
     }
 }
 
+private struct NewShiftRequest: Identifiable {
+    let id = UUID()
+    let date: Date
+}
+
 struct ScheduleView: View {
     @EnvironmentObject private var store: ShiftStore
     @AppStorage("plantao-na-mao.theme") private var theme = ShiftColor.mint.rawValue
     @State private var selectedDate = AppLaunch.initialDate
-    @State private var showingEditor = false
+    @State private var newShift: NewShiftRequest?
     @State private var editing: Shift?
     @State private var showingReports = false
     @State private var pendingDeletion: Shift?
@@ -85,21 +90,21 @@ struct ScheduleView: View {
                 ToolbarItem(placement: .topBarLeading) { Button("Hoje") { selectedDate = .now } }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button { showingReports = true } label: { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("Exportar PDF")
-                    Button { showingEditor = true } label: { Image(systemName: "plus") }.accessibilityLabel("Adicionar plantão").disabled(!store.canWrite)
+                    Button { newShift = NewShiftRequest(date: selectedDate) } label: { Image(systemName: "plus") }.accessibilityLabel("Adicionar plantão").disabled(!store.canWrite)
                 }
             }
             .alert("Excluir este plantão?", isPresented: Binding(get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } })) {
                 Button("Cancelar", role: .cancel) { pendingDeletion = nil }
                 Button("Excluir", role: .destructive) { if let item = pendingDeletion { store.remove(item) }; pendingDeletion = nil }
             } message: { Text("O plantão e sua previsão de pagamento serão removidos. Esta alteração também será sincronizada.") }
-            .sheet(isPresented: $showingEditor) { ShiftEditor(date: selectedDate) }
+            .sheet(item: $newShift) { request in ShiftEditor(date: request.date) }
             .sheet(item: $editing) { ShiftEditor(date: $0.date, shift: $0) }
             .sheet(isPresented: $showingReports) { ReportView(month: selectedDate) }
             .onAppear { applyWidgetURL() }
             .onReceive(NotificationCenter.default.publisher(for: .widgetDateSelected)) { event in
-                guard let url = event.object as? URL, let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "date" })?.value else { return }
-                let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
-                if let date = f.date(from: value) { selectedDate = date }
+                guard let url = event.object as? URL, let date = WidgetData.date(from: url) else { return }
+                selectedDate = date
+                UserDefaults.standard.removeObject(forKey: "widget.pendingURL")
             }
         }
     }
@@ -139,7 +144,7 @@ struct ScheduleView: View {
                                 .listRowBackground(Color.clear)
                         }
                         ForEach(items) { shift in
-                            Button { editing = shift } label: { ShiftRow(shift: shift) }.buttonStyle(.plain)
+                            Button { editing = shift } label: { ShiftRow(shift: shift) }.buttonStyle(.plain).accessibilityIdentifier("shift-row-\(Calendar.current.component(.day, from: shift.date))")
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                                 .listRowBackground(Color.clear).listRowSeparator(.hidden)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -155,20 +160,22 @@ struct ScheduleView: View {
                 }
             }.listStyle(.plain).scrollContentBackground(.hidden)
                 .accessibilityIdentifier("scrolling-agenda")
-                .onChange(of: selectedDate) { _, value in
-                    Task { @MainActor in
-                        await Task.yield()
-                        withAnimation { proxy.scrollTo(Calendar.current.startOfDay(for: value), anchor: .top) }
-                    }
+                .task(id: Calendar.current.startOfDay(for: selectedDate)) { @MainActor in
+                    // List must finish its first layout before scrolling to an off-screen section.
+                    // All earlier days stay in the List and remain reachable by scrolling back.
+                    await Task.yield()
+                    try? await Task.sleep(for: .milliseconds(150))
+                    guard !Task.isCancelled else { return }
+                    proxy.scrollTo(Calendar.current.startOfDay(for: selectedDate), anchor: .top)
                 }
         }
     }
     private func applyWidgetURL() {
-        guard let string = UserDefaults.standard.string(forKey: "widget.pendingURL"), let url = URL(string: string), let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "date" })?.value else { return }
-        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
-        if let date = f.date(from: value) { selectedDate = date }
+        guard let string = UserDefaults.standard.string(forKey: "widget.pendingURL"), let url = URL(string: string) else { return }
+        if let date = WidgetData.date(from: url) { selectedDate = date }
         UserDefaults.standard.removeObject(forKey: "widget.pendingURL")
     }
+
     private func moveMonth(_ delta: Int) {
         selectedDate = Calendar.current.date(byAdding: .month, value: delta, to: selectedDate) ?? selectedDate
     }
@@ -229,6 +236,7 @@ struct CalendarDay: View {
                     .foregroundStyle(Calendar.current.isDateInToday(date) ? accent : Color.primary)
             }.frame(width: size, height: size).frame(maxWidth: .infinity).contentShape(Rectangle())
         }.buttonStyle(.plain)
+            .accessibilityIdentifier("calendar-day-\(Calendar.current.component(.day, from: date))")
             .accessibilityLabel("\(date.formatted(date: .complete, time: .omitted)), \(shifts.count) plantões\(colors.isEmpty ? "" : ", " + colors.map(\.name).joined(separator: ", "))")
             .accessibilityAddTraits(selected ? .isSelected : [])
     }

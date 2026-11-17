@@ -85,12 +85,13 @@ struct ShiftEditor: View {
             Form {
                 if existing == nil && !store.recent.isEmpty { recentSection }
                 Section("Seu plantão") {
-                    TextField("Nome do plantão", text: $title).textInputAutocapitalization(.sentences)
+                    TextField("Nome do plantão", text: $title).textInputAutocapitalization(.sentences).accessibilityIdentifier("shift-title")
                     TextField("Hospital, clínica ou local", text: $location).textInputAutocapitalization(.words)
                     if !store.locations.isEmpty {
                         Menu("Usar local já cadastrado") { ForEach(store.locations, id: \.self) { name in Button(name) { location = name } } }
                     }
                     DatePicker("Data do plantão", selection: $date, displayedComponents: .date)
+                    Text(date.formatted(.dateTime.day().month(.wide).year())).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("shift-selected-date")
                 }
                 Section {
                     DatePicker("Entrada", selection: $start, displayedComponents: .hourAndMinute)
@@ -123,7 +124,7 @@ struct ShiftEditor: View {
             .navigationTitle(existing == nil ? "Novo plantão" : "Editar plantão").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Salvar") { store.save(draft); if store.canWrite { dismiss() } else { validationError = store.storageError } }.bold().disabled(!valid) }
+                ToolbarItem(placement: .confirmationAction) { Button("Salvar") { if store.save(draft) { dismiss() } else { validationError = store.storageError ?? "Confira os campos e tente novamente." } }.bold().disabled(!valid).accessibilityIdentifier("save-shift") }
             }
             .confirmationDialog("Excluir este plantão?", isPresented: $confirmingDelete, titleVisibility: .visible) {
                 Button("Excluir plantão", role: .destructive) { if let existing { store.remove(existing); dismiss() } }
@@ -145,18 +146,20 @@ struct ShiftEditor: View {
                         }
                         Spacer(); Image(systemName: "arrow.down.doc")
                     }
-                }.buttonStyle(.plain).accessibilityLabel("Reaproveitar \(shift.title)")
+                }.buttonStyle(.borderless).accessibilityLabel("Reaproveitar \(shift.title)").accessibilityIdentifier("reuse-\(shift.id.uuidString)")
             }
         } header: { Text("Reaproveitar um dos últimos 3 plantões") } footer: {
-            Text("Toque para preencher os campos. A data também será copiada: confira antes de salvar. Você pode ignorar os modelos e criar um plantão novo.")
+            Text("Toque para preencher nome, local, horários, cor e valor. A data escolhida é mantida e a previsão de pagamento é recalculada pelo seu padrão. Depois toque em Salvar.")
         }
     }
     private func use(_ shift: Shift) {
-        title = shift.title; location = shift.location; date = shift.date
-        start = shift.start; end = shift.end; color = shift.color; notes = shift.notes
-        pricing = shift.pricingMode
-        amount = Money.input(shift.pricingMode == .hour ? shift.rateCents : shift.amountCents)
-        mode = shift.paymentDate == nil ? .none : .custom
-        customDate = shift.paymentDate ?? shift.date
+        let preset = shift.reused(on: date, paymentDay: defaultDay, nextMonth: nextMonth)
+        title = preset.title; location = preset.location
+        start = preset.start; end = preset.end; color = preset.color; notes = preset.notes
+        pricing = preset.pricingMode
+        amount = Money.input(preset.pricingMode == .hour ? preset.rateCents : preset.amountCents)
+        mode = preset.paymentDate == nil ? .none : .standard
+        customDate = preset.paymentDate ?? date
+        validationError = nil
     }
 }

@@ -1,6 +1,6 @@
-# Widgets · Plantão na Mão 1.2
+# Widgets · Plantão na Mão 1.3
 
-O projeto inclui uma extensão WidgetKit, embutida no aplicativo, com tamanhos pequeno, médio e grande. Os três mostram o calendário mensal com aros nas cores dos plantões; médio e grande também mostram próximos plantões e informações do mês. A aparência segue a escolha clara, escura ou automática do app.
+O projeto inclui uma extensão WidgetKit, embutida no aplicativo, com tamanhos pequeno, médio e grande. Os três mostram o calendário mensal com aros nas cores dos plantões; o espaço inteiro é reservado ao calendário, sem textos de resumo ou aviso abaixo dele. Os aros são círculos e o mês e o dia atual aparecem em laranja, conforme a referência. A aparência segue a escolha clara, escura ou automática do app.
 
 ## Assinar e habilitar o compartilhamento
 
@@ -11,7 +11,7 @@ O projeto inclui uma extensão WidgetKit, embutida no aplicativo, com tamanhos p
 5. Os Bundle IDs padrão são `com.plantaonamao.app` e `com.plantaonamao.app.widgets`. Perfis de provisionamento precisam contemplar os identificadores e o App Group escolhidos.
 6. Assine app e extensão juntos. Ao usar um assinador de IPA, preserve a pasta `PlugIns` e configure os direitos e perfis do App Group para ambos. Uma assinatura sem App Groups não permite que o widget leia os dados do app.
 
-O IPA automático é sem assinatura. Compilar a extensão não cria nem autoriza o App Group na conta Apple. O aplicativo avisa em Ajustes se o compartilhamento não estiver disponível na assinatura instalada.
+O IPA automático é sem assinatura. Compilar a extensão não cria nem autoriza o App Group na conta Apple. O aplicativo avisa em Ajustes se o compartilhamento não estiver disponível na assinatura instalada. Abrir o app repetidamente não resolve uma assinatura sem a permissão: é necessário assinar novamente os dois targets com o mesmo grupo registrado.
 
 ## Adicionar à tela inicial
 
@@ -19,8 +19,12 @@ Após instalar e abrir o aplicativo, mantenha pressionada a tela inicial do iPho
 
 ## Atualização
 
-O app grava os dados no contêiner compartilhado e solicita uma atualização ao salvar, excluir, sincronizar, trocar a aparência e ir para segundo plano. A extensão publica uma timeline com a mudança do dia e solicita novas timelines periodicamente.
+O app termina uma gravação atômica em `plantao-widget-snapshot.json` no contêiner compartilhado antes de solicitar atualização ao salvar, excluir, sincronizar, trocar a aparência, entrar em primeiro plano ou ir para segundo plano. A extensão lê o arquivo diretamente e mantém uma leitura de compatibilidade do snapshot em preferências usado na versão 1.2. A timeline antecipa sete viradas de dia/mês e solicita novas timelines periodicamente.
 
-O iOS controla o orçamento e o momento de atualização dos widgets. A versão 1.2 solicita atualização imediatamente após alterações, mas não promete atualização contínua em tempo real com o app fechado. Sincronização Google em segundo plano também depende do tempo de execução concedido ao aplicativo.
+Em **Ajustes > Widgets > Atualizar widget agora**, confira quantos plantões foram enviados. Se houver aviso de assinatura sem acesso, siga a configuração de App Group acima. Se o envio concluir, aguarde o iOS atualizar; após atualizar da 1.2, remover e adicionar o widget pode limpar uma apresentação antiga. Sem dados, o calendário fica vazio; não inserimos plantões fictícios nem mostramos mensagens no widget.
+
+O iOS controla o orçamento e o momento de atualização dos widgets. A versão 1.3 solicita atualização imediatamente após alterações, mas não promete atualização contínua em tempo real com o app fechado. Sincronização Google em segundo plano também depende do tempo de execução concedido ao aplicativo.
 
 Referência: https://developer.apple.com/documentation/widgetkit/keeping-a-widget-up-to-date
+
+Referência de compartilhamento: https://developer.apple.com/documentation/xcode/configuring-app-groups
