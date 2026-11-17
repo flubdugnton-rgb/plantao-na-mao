@@ -24,7 +24,7 @@ concurrency:
 jobs:
   build-ios:
     name: Validar e compilar iOS
-    runs-on: macos-26-intel
+    runs-on: macos-26
     timeout-minutes: 35
     steps:
       - name: Baixar o projeto
@@ -44,6 +44,11 @@ jobs:
         run: |
           DEVICE_ID=$(xcrun simctl list devices available --json | python3 scripts/select-simulator.py)
           echo "IOS_SIMULATOR_ID=$DEVICE_ID" >> "$GITHUB_ENV"
+      - name: Inicializar simulador iOS
+        timeout-minutes: 5
+        run: |
+          xcrun simctl boot "$IOS_SIMULATOR_ID" || true
+          xcrun simctl bootstatus "$IOS_SIMULATOR_ID" -b
       - name: Compilar app e testes para o simulador
         run: |
           xcodebuild build-for-testing \
@@ -52,18 +57,35 @@ jobs:
             -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO
-      - name: Testar no simulador iOS
+      - name: Testar dados, PDFs e sincronização
+        timeout-minutes: 5
         run: |
           xcodebuild test-without-building \
             -project PlantaoNaMao.xcodeproj \
             -scheme PlantaoNaMao \
             -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
             -derivedDataPath build/DerivedData \
+            -only-testing:PlantaoNaMaoTests \
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 120 \
             -maximum-test-execution-time-allowance 150 \
-            -resultBundlePath build/Tests.xcresult \
+            -resultBundlePath build/UnitTests.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Testar calendário fixo e acesso a Ajustes
+        timeout-minutes: 5
+        run: |
+          xcodebuild test-without-building \
+            -project PlantaoNaMao.xcodeproj \
+            -scheme PlantaoNaMao \
+            -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
+            -derivedDataPath build/DerivedData \
+            -only-testing:PlantaoNaMaoUITests \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 120 \
+            -maximum-test-execution-time-allowance 150 \
+            -resultBundlePath build/UITests.xcresult \
             CODE_SIGNING_ALLOWED=NO
       - name: Compilar arquivo para iPhone e iPad
         run: |
@@ -78,9 +100,12 @@ jobs:
       - name: Extrair capturas dos testes de interface
         if: always()
         run: |
-          if [ -d build/Tests.xcresult ]; then
-            xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path build/Screenshots || true
-          fi
+          for RESULT in build/*.xcresult; do
+            if [ -d "$RESULT" ]; then
+              NAME=$(basename "$RESULT" .xcresult)
+              xcrun xcresulttool export attachments --path "$RESULT" --output-path "build/Screenshots/$NAME" || true
+            fi
+          done
       - name: Empacotar IPA sem assinatura e projeto Xcode
         run: |
           mkdir -p build/package/Payload
@@ -99,7 +124,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PlantaoNaMao-testes
-          path: build/Tests.xcresult
+          path: build/*.xcresult
           if-no-files-found: ignore
           retention-days: 7
       - name: Disponibilizar compilação iOS 1.1

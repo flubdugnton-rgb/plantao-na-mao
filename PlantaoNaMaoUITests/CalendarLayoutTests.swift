@@ -12,22 +12,22 @@ final class CalendarLayoutTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["large-current-month"].exists)
         XCTAssertFalse(app.staticTexts["Tudo sob controle.\nUm plantão por vez."].exists)
         let before = calendar.frame
-        attach(app, name: "01-Escala-Liquid-Glass")
+        attach(name: "01-Escala-Liquid-Glass")
         let agenda = app.scrollViews["scrolling-agenda"]
         XCTAssertTrue(agenda.exists)
         agenda.swipeUp()
         agenda.swipeUp()
         XCTAssertEqual(calendar.frame.minY, before.minY, accuracy: 1)
         XCTAssertEqual(calendar.frame.height, before.height, accuracy: 1)
-        attach(app, name: "02-Calendario-fixo-apos-rolagem")
+        attach(name: "02-Calendario-fixo-apos-rolagem")
         app.tabBars.buttons["Ajustes"].tap()
         XCTAssertTrue(app.buttons["Entrar com Google"].waitForExistence(timeout: 10))
-        attach(app, name: "03-Ajustes-e-Google")
+        attach(name: "03-Ajustes-e-Google")
     }
 
     @MainActor
-    private func attach(_ app: XCUIApplication, name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+    private func attach(name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name; attachment.lifetime = .keepAlways
         add(attachment)
     }
