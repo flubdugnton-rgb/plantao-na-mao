@@ -1,4 +1,4 @@
-# Configurar a sincronização Google · versão 1.1
+# Configurar a sincronização Google · versão 1.2
 
 O código usa o SDK oficial **Google Sign-In 10.1.0**, com OAuth e tokens gerenciados pelo SDK no Keychain. Os dados ficam exclusivamente no espaço privado `appDataFolder` do Google Drive, com o escopo `https://www.googleapis.com/auth/drive.appdata`. Não pede acesso aos demais arquivos do Drive.
 
@@ -28,7 +28,7 @@ Não é necessário conectar a conta Google ao ChatGPT para que o login do app f
 
 - A sincronização é opcional; o app continua funcionando offline.
 - Depois de conectar, o app tenta sincronizar ao abrir, cerca de dois segundos após alterações e a cada 30 segundos enquanto estiver ativo. O botão **Sincronizar agora** permite antecipar uma tentativa.
-- O iOS pode suspender aplicativos fechados ou em segundo plano. A versão 1.1 não promete sincronização contínua com o aplicativo fechado; ela retoma automaticamente ao voltar.
+- O iOS pode suspender aplicativos fechados ou em segundo plano. A versão 1.2 não promete sincronização contínua com o aplicativo fechado; ela retoma automaticamente ao voltar.
 - Cada instalação grava um arquivo próprio, identificado por um UUID do dispositivo. A sincronização lê os arquivos de todos os dispositivos da mesma conta, mescla os registros e atualiza apenas o arquivo da instalação atual.
 - Registros são conciliados por UUID, data da alteração e desempate determinístico. Em edições simultâneas do mesmo plantão, prevalece a alteração mais recente; mantenha os relógios dos aparelhos corretos.
 - Exclusões também são sincronizadas e preservadas como marcadores, para que uma cópia antiga não recadastre um plantão apagado.
@@ -40,7 +40,7 @@ Não é necessário conectar a conta Google ao ChatGPT para que o login do app f
 
 ## Preparação para o futuro app Mac
 
-`Models.swift`, `SyncModels.swift` e `GoogleDriveSync.swift` usam Foundation e podem ser reutilizados em um target macOS. Crie as credenciais macOS no **mesmo projeto Google Cloud**, use o mesmo escopo e formato JSON e conecte a mesma conta Google. A interface e o apresentador de login do Mac precisam de uma implementação própria; a versão 1.1 entregue aqui continua sendo o app de iPhone/iPad.
+`Models.swift`, `SyncModels.swift` e `GoogleDriveSync.swift` usam Foundation e podem ser reutilizados em um target macOS. Crie as credenciais macOS no **mesmo projeto Google Cloud**, use o mesmo escopo e formato JSON e conecte a mesma conta Google. A interface e o apresentador de login do Mac precisam de uma implementação própria; a versão 1.2 entregue aqui continua sendo o app de iPhone/iPad.
 
 ## Validação que exige uma conta real
 
@@ -51,3 +51,5 @@ Referências oficiais:
 - https://developers.google.com/identity/sign-in/ios/sign-in
 - https://developers.google.com/identity/sign-in/ios/api-access
 - https://developers.google.com/workspace/drive/api/guides/appdata
+
+Na versão 1.2, a sincronização grava schema 2 e migra snapshots schema 1. Atualize os outros aparelhos antes de sincronizar; o cálculo por hora e a data de criação fazem parte dos registros sincronizados.

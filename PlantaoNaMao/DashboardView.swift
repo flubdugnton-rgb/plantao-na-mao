@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import UIKit
 
 struct DashboardView: View {
     @EnvironmentObject private var store: ShiftStore
@@ -8,14 +9,15 @@ struct DashboardView: View {
     @AppStorage("finance.ir.enabled") private var irEnabled = false
     @AppStorage("finance.ir.rate") private var irRate = "0,00"
     @State private var selected: Date?
-    private var months: [MonthlySummary] { MonthlySummary.build(store.shifts) }
-    private var current: MonthlySummary { months.first { Calendar.current.isDate($0.date, equalTo: selected ?? Date(), toGranularity: .month) } ?? MonthlySummary(date: Calendar.current.dateInterval(of: .month, for: selected ?? Date())!.start, shifts: []) }
+    @State private var referenceDate = Date()
+    private var months: [MonthlySummary] { MonthlySummary.build(store.shifts, now: referenceDate) }
+    private var current: MonthlySummary { months.first { Calendar.current.isDate($0.date, equalTo: selected ?? referenceDate, toGranularity: .month) } ?? MonthlySummary(date: Calendar.current.dateInterval(of: .month, for: selected ?? referenceDate)!.start, shifts: []) }
     private var plan: DeductionPlan { DeductionPlan(inssEnabled: inssEnabled, inssText: inssRate, irEnabled: irEnabled, irText: irRate) }
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    MonthChoice(title: "Competência do painel", date: Binding(get: { selected ?? Date() }, set: { selected = $0 }))
+                    MonthChoice(title: "Competência do painel", date: Binding(get: { selected ?? referenceDate }, set: { selected = $0 }))
                     LabeledContent("Plantões", value: "\(current.shifts.count)")
                     LabeledContent("Horas trabalhadas", value: "\(current.minutes / 60)h \(current.minutes % 60)min")
                     FinanceTotalsRows(totals: plan.totals(gross: current.gross), valid: plan.valid)
@@ -49,6 +51,8 @@ struct DashboardView: View {
                     LabeledContent("Bruto", value: Money.format(store.shifts.reduce(0) { $0 + $1.amountCents }))
                 }
             }.navigationTitle("Painel mensal")
+                .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in referenceDate = Date() }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in referenceDate = Date() }
         }
     }
 }
