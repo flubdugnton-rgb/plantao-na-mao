@@ -154,3 +154,46 @@ jobs:
           - Baixe o IPA **sem assinatura** e o projeto Xcode em **Artifacts**.
           - Para instalar ou distribuir, configure a assinatura Apple no Xcode.
           MD
+
+
+  release-ipa:
+    name: Gerar IPA iOS 1.1
+    runs-on: macos-26-intel
+    timeout-minutes: 25
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+      - name: Selecionar Xcode 26
+        run: bash scripts/select-xcode.sh
+      - name: Validar regras e gerar projeto Xcode
+        run: |
+          bash scripts/check-models.sh
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen generate
+      - name: Compilar Release para iPhone e iPad
+        run: |
+          xcodebuild archive \
+            -project PlantaoNaMao.xcodeproj \
+            -scheme PlantaoNaMao \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Release.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+      - name: Empacotar IPA 1.1
+        run: |
+          mkdir -p build/package/Payload
+          ditto build/Release.xcarchive/Products/Applications/PlantaoNaMao.app build/package/Payload/PlantaoNaMao.app
+          ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.1-sem-assinatura.ipa
+          ditto -c -k --keepParent PlantaoNaMao.xcodeproj build/PlantaoNaMao-Xcode.zip
+      - name: Disponibilizar IPA e projeto
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlantaoNaMao-iOS-1.1-IPA
+          path: |
+            build/PlantaoNaMao-1.1-sem-assinatura.ipa
+            build/PlantaoNaMao-Xcode.zip
+          if-no-files-found: error
+          retention-days: 30
