@@ -112,6 +112,8 @@ jobs:
           mkdir -p build/package/Payload
           ditto build/PlantaoNaMao.xcarchive/Products/Applications/PlantaoNaMao.app build/package/Payload/PlantaoNaMao.app
           test -d build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/Info.plist)" = '1.3'
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex/Info.plist)" = '1.3' 
           ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.3-sem-assinatura.ipa
           ditto -c -k --keepParent PlantaoNaMao.xcodeproj build/PlantaoNaMao-Xcode.zip
           cat > build/LEIA-ME.txt <<'TXT'
@@ -189,6 +191,8 @@ jobs:
           mkdir -p build/package/Payload
           ditto build/Release.xcarchive/Products/Applications/PlantaoNaMao.app build/package/Payload/PlantaoNaMao.app
           test -d build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/Info.plist)" = '1.3'
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex/Info.plist)" = '1.3' 
           ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.3-sem-assinatura.ipa
           ditto -c -k --keepParent PlantaoNaMao.xcodeproj build/PlantaoNaMao-Xcode.zip
       - name: Disponibilizar IPA e projeto

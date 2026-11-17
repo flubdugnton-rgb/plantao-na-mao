@@ -35,6 +35,8 @@ targets:
       path: PlantaoNaMao/Info.plist
       properties:
         CFBundleDisplayName: Plantão na Mão
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleDevelopmentRegion: pt_BR
         CFBundleLocalizations: [pt_BR]
         SharedAppGroupIdentifier: "$(APP_GROUP_IDENTIFIER)"
@@ -85,6 +87,8 @@ targets:
       path: PlantaoNaMaoWidgets/Info.plist
       properties:
         CFBundleDisplayName: Plantão na Mão
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         SharedAppGroupIdentifier: "$(APP_GROUP_IDENTIFIER)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
