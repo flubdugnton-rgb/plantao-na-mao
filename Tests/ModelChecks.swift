@@ -13,6 +13,9 @@ struct ModelChecks {
         }
         check(Money.parse("1.250,50") == 125050, "BRL com separador de milhar")
         check(Money.parse("200,5") == 20050, "Uma casa decimal")
+        check(Money.parse("200.50") == 20050, "Teclado com ponto decimal")
+        check(Money.parse("1.250") == 125000, "Milhar brasileiro")
+        check(Money.parse("12.34.56") == nil, "Rejeitar separadores de milhar incorretos")
         check(Money.parse("") == 0, "Valor não informado")
         for invalid in ["-2", "abc", "1,000", "1,2,3", "99999999999999999999999"] {
             check(Money.parse(invalid) == nil, "Valor inválido: \(invalid)")

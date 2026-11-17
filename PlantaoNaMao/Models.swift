@@ -74,11 +74,22 @@ struct Shift: Identifiable, Codable, Equatable {
 
 enum Money {
     static func parse(_ text: String) -> Int? {
-        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if cleaned.isEmpty { return 0 }
+        // Some iPhone keyboards use a decimal point even with a Portuguese UI.
+        if !cleaned.contains(","), cleaned.contains(".") {
+            let groups = cleaned.split(separator: ".", omittingEmptySubsequences: false)
+            if groups.count == 2, (1...2).contains(groups[1].count) {
+                cleaned = groups.joined(separator: ",")
+            }
+        }
         let pieces = cleaned.split(separator: ",", omittingEmptySubsequences: false)
         guard pieces.count <= 2 else { return nil }
-        let whole = String(pieces[0]).replacingOccurrences(of: ".", with: "")
+        let groups = pieces[0].split(separator: ".", omittingEmptySubsequences: false)
+        if groups.count > 1 {
+            guard (1...3).contains(groups[0].count), groups.dropFirst().allSatisfy({ $0.count == 3 }) else { return nil }
+        }
+        let whole = groups.joined()
         let fraction = pieces.count == 2 ? String(pieces[1]) : ""
         guard !whole.isEmpty, whole.allSatisfy({ $0.isASCII && $0.isNumber }),
               fraction.count <= 2, fraction.allSatisfy({ $0.isASCII && $0.isNumber }),

@@ -44,6 +44,7 @@ jobs:
             -project PlantaoNaMao.xcodeproj \
             -scheme PlantaoNaMao \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            -parallel-testing-enabled NO \
             -resultBundlePath build/Tests.xcresult \
             CODE_SIGNING_ALLOWED=NO
       - name: Compilar arquivo para iPhone e iPad
