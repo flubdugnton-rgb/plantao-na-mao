@@ -76,7 +76,7 @@ private struct NativeGoogleSignInButton: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
     func makeUIView(context: Context) -> GIDSignInButton {
         let button = GIDSignInButton()
-        button.style = .wide
+        button.style = .standard
         button.isAccessibilityElement = true
         button.accessibilityLabel = "Entrar com Google"
         button.accessibilityTraits = .button
@@ -86,11 +86,11 @@ private struct NativeGoogleSignInButton: UIViewRepresentable {
     func updateUIView(_ button: GIDSignInButton, context: Context) {
         context.coordinator.action = action
         button.isEnabled = enabled
-        button.colorScheme = scheme == .dark ? .dark : .light
+        let desired: GIDSignInButtonColorScheme = scheme == .dark ? .dark : .light
+        if button.colorScheme != desired { button.colorScheme = desired }
     }
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: GIDSignInButton, context: Context) -> CGSize? {
         let width = proposal.width ?? 312
-        uiView.style = width < 312 ? .standard : .wide
         return CGSize(width: width, height: 48)
     }
     final class Coordinator: NSObject {
