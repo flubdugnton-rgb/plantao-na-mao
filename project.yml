@@ -31,7 +31,7 @@ targets:
       path: PlantaoNaMao/Plantao.entitlements
       properties:
         com.apple.security.application-groups: ["$(APP_GROUP_IDENTIFIER)"]
-        keychain-access-groups: ["$(AppIdentifierPrefix)com.plantaonamao.widget"]
+        keychain-access-groups: ["$(AppIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)", "$(AppIdentifierPrefix)com.plantaonamao.widget"]
     info:
       path: PlantaoNaMao/Info.plist
       properties:
@@ -41,6 +41,7 @@ targets:
         CFBundleDevelopmentRegion: pt_BR
         CFBundleLocalizations: [pt_BR]
         SharedAppGroupIdentifier: "$(APP_GROUP_IDENTIFIER)"
+        SharedKeychainAccessGroup: "$(AppIdentifierPrefix)com.plantaonamao.widget"
         GIDClientID: 240965240632-fd5s8htiparn8kk84rpctc1ggrfrur2g.apps.googleusercontent.com
         CFBundleURLTypes:
           - CFBundleURLSchemes: [plantaonamao]
@@ -85,7 +86,7 @@ targets:
       path: PlantaoNaMaoWidgets/Widgets.entitlements
       properties:
         com.apple.security.application-groups: ["$(APP_GROUP_IDENTIFIER)"]
-        keychain-access-groups: ["$(AppIdentifierPrefix)com.plantaonamao.widget"]
+        keychain-access-groups: ["$(AppIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)", "$(AppIdentifierPrefix)com.plantaonamao.widget"]
     info:
       path: PlantaoNaMaoWidgets/Info.plist
       properties:
@@ -93,6 +94,7 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         SharedAppGroupIdentifier: "$(APP_GROUP_IDENTIFIER)"
+        SharedKeychainAccessGroup: "$(AppIdentifierPrefix)com.plantaonamao.widget"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

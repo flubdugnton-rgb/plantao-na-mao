@@ -21,7 +21,7 @@ A alternativa envia exclusivamente datas e cores do mês anterior, atual e segui
 1. Execute `xcodegen generate` e abra `PlantaoNaMao.xcodeproj`.
 2. Selecione a mesma equipe Apple nos targets **PlantaoNaMao** e **PlantaoNaMaoWidgets**.
 3. O App Group padrão é `group.com.plantaonamao.shared`: registre-o e habilite-o nos dois perfis. Se sua equipe exigir outro grupo, altere `APP_GROUP_IDENTIFIER` em `project.yml` antes de gerar o projeto.
-4. Os dois targets também declaram Keychain Sharing: `$(AppIdentifierPrefix)com.plantaonamao.widget`. O prefixo deve ser expandido pela assinatura da sua equipe. Não há Team ID fixo no aplicativo.
+4. Os dois targets também declaram Keychain Sharing: `$(AppIdentifierPrefix)com.plantaonamao.widget`. O grupo privado de cada target permanece primeiro, para preservar a área padrão usada pelo login Google. O calendário seleciona explicitamente o grupo compartilhado quando autorizado; se um assinador substituir as permissões, tenta os grupos concedidos na assinatura. O prefixo deve ser expandido pela assinatura da sua equipe. Não há Team ID fixo no aplicativo.
 5. Bundle IDs padrão: `com.plantaonamao.app` e `com.plantaonamao.app.widgets`. Configure os perfis correspondentes e assine os dois targets juntos.
 
 O IPA automático é **sem assinatura**. A compilação não registra nem concede permissões na conta Apple. Certificados, chaves privadas e senhas não precisam ser enviados para usar os diagnósticos do aplicativo.

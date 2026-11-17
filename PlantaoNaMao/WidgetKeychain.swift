@@ -3,18 +3,31 @@ import Security
 import LocalAuthentication
 
 // Only this app's calendar projection and read receipt are stored here.
-// No access-group override: the OS uses the groups granted by the installed signature.
+// Every operation is checked by the OS against the installed signature.
 enum WidgetKeychain {
     private static let service = "com.plantaonamao.widget-calendar.v1"
-    private static func query(_ account: String) -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: service,
-         kSecAttrAccount as String: account,
-         kSecAttrSynchronizable as String: false]
+    private static var configuredGroup: String? {
+        guard let group = Bundle.main.object(forInfoDictionaryKey: "SharedKeychainAccessGroup") as? String,
+              !group.isEmpty, !group.contains("$(") else { return nil }
+        return group
+    }
+    private static func query(_ account: String, group: String?) -> [String: Any] {
+        var result: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                    kSecAttrService as String: service,
+                                    kSecAttrAccount as String: account,
+                                    kSecAttrSynchronizable as String: false]
+        if let group { result[kSecAttrAccessGroup as String] = group }
+        return result
     }
     @discardableResult
     static func write(_ data: Data, account: String) -> OSStatus {
-        let search = query(account)
+        // Use the dedicated, signed group when Xcode configured it. Sideloaders may
+        // replace those entitlements: fall back only to groups granted by the OS.
+        if let group = configuredGroup, upsert(data, account: account, group: group) == errSecSuccess { return errSecSuccess }
+        return upsert(data, account: account, group: nil)
+    }
+    private static func upsert(_ data: Data, account: String, group: String?) -> OSStatus {
+        let search = query(account, group: group)
         let changes: [String: Any] = [kSecValueData as String: data,
                                      kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
         let status = SecItemUpdate(search as CFDictionary, changes as CFDictionary)
@@ -24,7 +37,11 @@ enum WidgetKeychain {
         return SecItemAdd(item as CFDictionary, nil)
     }
     static func read(account: String) -> Data? {
-        var search = query(account)
+        if let group = configuredGroup, let data = read(account: account, group: group) { return data }
+        return read(account: account, group: nil)
+    }
+    private static func read(account: String, group: String?) -> Data? {
+        var search = query(account, group: group)
         search[kSecReturnData as String] = true
         search[kSecMatchLimit as String] = kSecMatchLimitOne
         let context = LAContext(); context.interactionNotAllowed = true
