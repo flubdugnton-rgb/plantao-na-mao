@@ -1,4 +1,4 @@
-name: Extrair projeto iOS 1.3 automaticamente
+name: Extrair projeto iOS 1.4 automaticamente
 
 on:
   push:
@@ -40,15 +40,15 @@ jobs:
           xcodegen generate
       - name: Organizar projeto completo
         run: |
-          mkdir -p build/PlantaoNaMao-iOS-1.3/.github
-          cp -R PlantaoNaMao PlantaoNaMaoWidgets PlantaoNaMaoTests PlantaoNaMaoUITests Tests scripts project.yml README.md GOOGLE_SYNC_SETUP.md WIDGETS_SETUP.md PlantaoNaMao.xcodeproj build/PlantaoNaMao-iOS-1.3/
-          cp -R .github/workflows build/PlantaoNaMao-iOS-1.3/.github/
-          cp .gitignore build/PlantaoNaMao-iOS-1.3/
-          ditto -c -k --keepParent build/PlantaoNaMao-iOS-1.3 build/PlantaoNaMao-iOS-1.3-projeto-completo.zip
+          mkdir -p build/PlantaoNaMao-iOS-1.4/.github
+          cp -R PlantaoNaMao PlantaoNaMaoWidgets PlantaoNaMaoTests PlantaoNaMaoUITests Tests scripts project.yml README.md GOOGLE_SYNC_SETUP.md WIDGETS_SETUP.md PlantaoNaMao.xcodeproj build/PlantaoNaMao-iOS-1.4/
+          cp -R .github/workflows build/PlantaoNaMao-iOS-1.4/.github/
+          cp .gitignore build/PlantaoNaMao-iOS-1.4/
+          ditto -c -k --keepParent build/PlantaoNaMao-iOS-1.4 build/PlantaoNaMao-iOS-1.4-projeto-completo.zip
       - name: Disponibilizar projeto extraído
         uses: actions/upload-artifact@v4
         with:
-          name: PlantaoNaMao-iOS-1.3-projeto-completo
-          path: build/PlantaoNaMao-iOS-1.3-projeto-completo.zip
+          name: PlantaoNaMao-iOS-1.4-projeto-completo
+          path: build/PlantaoNaMao-iOS-1.4-projeto-completo.zip
           if-no-files-found: error
           retention-days: 30

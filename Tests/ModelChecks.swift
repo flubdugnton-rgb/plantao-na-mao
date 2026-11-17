@@ -130,6 +130,27 @@ struct ModelChecks {
         check(snapshotFile.load() == nil, "Widget rejeita arquivo ilegível")
         check(WidgetData.date(from: WidgetData.url(for: chosenDay)) == chosenDay, "Tocar no widget abre o dia correspondente")
         check(WidgetData.date(from: URL(string: "plantaonamao://invalid?date=2026-11-20")!) == nil, "Widget rejeita rota desconhecida")
+        let calendarPayload = WidgetCalendarPayload(snapshot: widgetSnapshot)
+        check(calendarPayload.days.count == 2, "Chaves carregam dias com aros do mês")
+        let projection = calendarPayload.snapshot
+        check(projection.shifts.map(\.date) == [originalDay, chosenDay] && projection.shifts.allSatisfy { $0.color == .red }, "Alternativa nas Chaves preserva datas e cores")
+        check(projection.shifts.allSatisfy { $0.title.isEmpty && $0.location.isEmpty && $0.notes.isEmpty && $0.amountCents == 0 && $0.paymentDate == nil }, "Chaves não recebem nomes, locais, anotações nem valores")
+        let payloadEncoded = try JSONEncoder().encode(calendarPayload)
+        let payloadRead = try JSONDecoder().decode(WidgetCalendarPayload.self, from: payloadEncoded)
+        check(payloadRead == calendarPayload && payloadRead.fingerprint == calendarPayload.fingerprint, "Calendário das Chaves mantém identificação após leitura")
+        check(WidgetCalendarPayload(snapshot: projection).fingerprint == calendarPayload.fingerprint, "Leitura do widget produz a mesma confirmação do app")
+        var named = original; named.title = "Nome privado"; named.location = "Local privado"; named.notes = "Anotação privada"; named.amountCents = 987654
+        let renamed = WidgetCalendarPayload(snapshot: WidgetSnapshot(shifts: [named, preset], appearance: "dark", updatedAt: chosenDay))
+        check(renamed.fingerprint == calendarPayload.fingerprint, "Identificação depende apenas das informações visíveis no widget")
+        var recolored = preset; recolored.color = .blue
+        let changedColor = WidgetCalendarPayload(snapshot: WidgetSnapshot(shifts: [original, recolored], appearance: "dark", updatedAt: chosenDay))
+        check(changedColor.fingerprint != calendarPayload.fingerprint, "Mudar a cor exige nova confirmação do widget")
+        var far = original; far.date = date(2027, 7, 1)
+        let limited = WidgetCalendarPayload(snapshot: WidgetSnapshot(shifts: [original, far], appearance: "dark", updatedAt: chosenDay))
+        check(limited.days.count == 1, "Chaves enviam apenas mês anterior, atual e seguinte")
+        let receipt = WidgetReadReceipt(fingerprint: calendarPayload.fingerprint, readAt: chosenDay, days: 2, source: "Chaves")
+        let readReceipt = try JSONDecoder().decode(WidgetReadReceipt.self, from: JSONEncoder().encode(receipt))
+        check(readReceipt == receipt, "Confirmação identifica os dados realmente lidos")
         print("\(checks) verificações aprovadas · \(TimeZone.current.identifier)")
     }
 }
