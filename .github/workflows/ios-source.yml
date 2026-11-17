@@ -17,10 +17,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ios-source-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   export-project:
     name: Gerar projeto Xcode e pacote de fontes
-    runs-on: macos-26
+    runs-on: macos-26-intel
     timeout-minutes: 10
     steps:
       - name: Baixar arquivos do projeto
