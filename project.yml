@@ -24,8 +24,6 @@ targets:
     dependencies:
       - package: GoogleSignIn
         product: GoogleSignIn
-      - package: GoogleSignIn
-        product: GoogleSignInSwift
     info:
       path: PlantaoNaMao/Info.plist
       properties:

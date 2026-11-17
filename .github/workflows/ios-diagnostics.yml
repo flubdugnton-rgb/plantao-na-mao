@@ -1,0 +1,54 @@
+name: Diagnosticar interface iOS 1.1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/ios-diagnostics.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect-captures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar capturas da execução de diagnóstico
+        uses: actions/download-artifact@v4
+        with:
+          name: PlantaoNaMao-1.1-telas
+          run-id: 44160813507
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: captures
+      - name: Preparar leitura do vídeo
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+      - name: Disponibilizar quadros de diagnóstico
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, base64
+          root = Path("captures")
+          out = Path("inspection")
+          out.mkdir(exist_ok=True)
+          items = list(sorted(root.rglob("*.png")))
+          for index, source in enumerate(items):
+              target = out / f"screen-{index}.png"
+              subprocess.run(["ffmpeg","-v","error","-i",str(source),"-vf","scale=590:-1","-frames:v","1",str(target)], check=True)
+          videos = list(root.rglob("*.mp4"))
+          if videos:
+              subprocess.run(["ffmpeg","-v","error","-sseof","-1","-i",str(videos[0]),"-vf","scale=590:-1","-frames:v","1",str(out/"last-frame.png")], check=True)
+          for picture in sorted(out.glob("*.png")):
+              payload = base64.b64encode(picture.read_bytes()).decode()
+              print("PNG-BEGIN:" + picture.name)
+              for i in range(0,len(payload),4096):
+                  print("PNG-DATA:" + payload[i:i+4096])
+              print("PNG-END:" + picture.name)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlantaoNaMao-1.1-quadros
+          path: inspection
+          retention-days: 7

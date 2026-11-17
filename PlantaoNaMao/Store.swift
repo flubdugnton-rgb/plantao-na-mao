@@ -107,17 +107,29 @@ extension ShiftColor {
 struct ColorChoices: View {
     @Binding var selection: ShiftColor
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 16) {
-            ForEach(ShiftColor.allCases) { color in
-                Button { selection = color } label: {
-                    VStack(spacing: 6) {
-                        Circle().fill(color.value).frame(width: 38, height: 38)
-                            .overlay { if selection == color { Image(systemName: "checkmark").font(.headline).foregroundStyle(color == .monochrome ? Color(.systemBackground) : color == .yellow || color == .peach ? Color.black : Color.white) } }
-                        Text(color.name).font(.caption2).foregroundStyle(.primary)
-                    }.frame(maxWidth: .infinity)
-                }.buttonStyle(.plain)
-                    .accessibilityLabel(color.name).accessibilityAddTraits(selection == color ? .isSelected : [])
+        VStack(spacing: 16) {
+            ForEach(0..<((ShiftColor.allCases.count + 3) / 4), id: \.self) { row in
+                HStack(spacing: 8) {
+                    ForEach(Array(ShiftColor.allCases.dropFirst(row * 4).prefix(4))) { color in
+                        colorButton(color)
+                    }
+                }
             }
         }.padding(.vertical, 8)
+    }
+    private func colorButton(_ color: ShiftColor) -> some View {
+        Button { selection = color } label: {
+            VStack(spacing: 6) {
+                Circle().fill(color.value).frame(width: 38, height: 38)
+                    .overlay {
+                        if selection == color {
+                            Image(systemName: "checkmark").font(.headline)
+                                .foregroundStyle(color == .monochrome ? Color(.systemBackground) : color == .yellow || color == .peach ? Color.black : Color.white)
+                        }
+                    }
+                Text(color.name).font(.caption2).foregroundStyle(.primary)
+            }.frame(maxWidth: .infinity)
+        }.buttonStyle(.plain)
+            .accessibilityLabel(color.name).accessibilityAddTraits(selection == color ? .isSelected : [])
     }
 }

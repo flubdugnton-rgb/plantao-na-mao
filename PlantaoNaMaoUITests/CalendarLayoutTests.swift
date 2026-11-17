@@ -4,7 +4,8 @@ final class CalendarLayoutTests: XCTestCase {
     @MainActor
     func testCalendarRemainsFixedWhileAgendaScrolls() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing"]
+        executionTimeAllowance = 120
+        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(pt-BR)", "-AppleLocale", "pt_BR"]
         app.launch()
         let calendar = app.otherElements["fixed-calendar"]
         XCTAssertTrue(calendar.waitForExistence(timeout: 10))
@@ -20,6 +21,7 @@ final class CalendarLayoutTests: XCTestCase {
         XCTAssertEqual(calendar.frame.height, before.height, accuracy: 1)
         attach(app, name: "02-Calendario-fixo-apos-rolagem")
         app.tabBars.buttons["Ajustes"].tap()
+        XCTAssertTrue(app.buttons["Entrar com Google"].waitForExistence(timeout: 10))
         attach(app, name: "03-Ajustes-e-Google")
     }
 

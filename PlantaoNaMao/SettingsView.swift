@@ -1,5 +1,5 @@
 import SwiftUI
-import GoogleSignInSwift
+import GoogleSignIn
 
 struct SettingsView: View {
     @EnvironmentObject private var cloud: GoogleSyncController
@@ -62,8 +62,40 @@ struct SettingsView: View {
     }
     private var googleButton: some View {
         VStack(alignment: .leading, spacing: 10) {
-            GoogleSignInButton { Task { await cloud.connect() } }.disabled(cloud.isConnecting)
+            NativeGoogleSignInButton(enabled: !cloud.isConnecting) { Task { await cloud.connect() } }.frame(height: 48)
             if cloud.isConnecting { ProgressView("Conectando ao Google…") }
         }.padding(.vertical, 4)
+    }
+}
+
+
+private struct NativeGoogleSignInButton: UIViewRepresentable {
+    let enabled: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+    func makeCoordinator() -> Coordinator { Coordinator(action: action) }
+    func makeUIView(context: Context) -> GIDSignInButton {
+        let button = GIDSignInButton()
+        button.style = .wide
+        button.isAccessibilityElement = true
+        button.accessibilityLabel = "Entrar com Google"
+        button.accessibilityTraits = .button
+        button.addTarget(context.coordinator, action: #selector(Coordinator.tapped), for: .touchUpInside)
+        return button
+    }
+    func updateUIView(_ button: GIDSignInButton, context: Context) {
+        context.coordinator.action = action
+        button.isEnabled = enabled
+        button.colorScheme = scheme == .dark ? .dark : .light
+    }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: GIDSignInButton, context: Context) -> CGSize? {
+        let width = proposal.width ?? 312
+        uiView.style = width < 312 ? .standard : .wide
+        return CGSize(width: width, height: 48)
+    }
+    final class Coordinator: NSObject {
+        var action: () -> Void
+        init(action: @escaping () -> Void) { self.action = action }
+        @objc func tapped() { action() }
     }
 }
