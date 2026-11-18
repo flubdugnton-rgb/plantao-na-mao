@@ -55,9 +55,44 @@ final class CalendarLayoutTests: XCTestCase {
     }
 
     @MainActor
+    func testWeekdayColumnsAlignWithDatesInPortraitAndLandscape() throws {
+        let app = XCUIApplication()
+        executionTimeAllowance = 120
+        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(pt-BR)", "-AppleLocale", "pt_BR"]
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        assertWeekdayAlignment(app, firstSunday: 1) // November 2026 starts on Sunday.
+        attach(name: "05-Alinhamento-Novembro")
+        app.buttons["Mês seguinte"].tap()
+        assertWeekdayAlignment(app, firstSunday: 6) // December 2026 starts on Tuesday.
+        app.buttons["Mês seguinte"].tap()
+        app.buttons["Mês seguinte"].tap()
+        assertWeekdayAlignment(app, firstSunday: 7) // February 2027 starts on Monday.
+        attach(name: "06-Alinhamento-Fevereiro")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        assertWeekdayAlignment(app, firstSunday: 7)
+        attach(name: "07-Alinhamento-Horizontal")
+    }
+
+    @MainActor
+    private func assertWeekdayAlignment(_ app: XCUIApplication, firstSunday: Int) {
+        for column in 0..<7 {
+            let header = app.staticTexts["weekday-column-\(column)"]
+            let day = app.buttons["calendar-day-\(firstSunday + column)"]
+            XCTAssertTrue(header.waitForExistence(timeout: 10))
+            XCTAssertTrue(day.waitForExistence(timeout: 10))
+            XCTAssertGreaterThan(header.frame.width, 0)
+            XCTAssertGreaterThan(day.frame.width, 0)
+            XCTAssertEqual(header.frame.midX, day.frame.midX, accuracy: 1, "Cabeçalho e data da coluna \(column) devem ter o mesmo centro")
+        }
+    }
+
+    @MainActor
     private func attach(name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name; attachment.lifetime = .keepAlways
         add(attachment)
     }
 }
+

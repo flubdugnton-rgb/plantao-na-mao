@@ -202,21 +202,21 @@ struct MonthCalendar: View {
     private var offset: Int { (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7 }
     private var count: Int { calendar.range(of: .day, in: .month, for: selectedDate)?.count ?? 30 }
     var body: some View {
-        VStack(spacing: compact ? 2 : 7) {
-            HStack {
-                ForEach(0..<7, id: \.self) { i in
-                    Text(["D", "S", "T", "Q", "Q", "S", "S"][(calendar.firstWeekday - 1 + i) % 7])
-                        .font(.caption2.weight(.medium)).foregroundStyle(.secondary).frame(maxWidth: .infinity)
-                }
-            }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: compact ? 1 : 4) {
-                ForEach(0..<(offset + count), id: \.self) { index in
-                    if index < offset { Color.clear.frame(height: compact ? 27 : 39) }
-                    else {
-                        let day = calendar.date(byAdding: .day, value: index - offset, to: first) ?? first
-                        CalendarDay(date: day, selected: calendar.isDate(day, inSameDayAs: selectedDate),
-                                    shifts: store.on(day), accent: accent, size: compact ? 27 : 39) { selectedDate = day }
-                    }
+        // Weekday labels and dates share one grid, including column widths and spacing.
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: compact ? 1 : 4) {
+            ForEach(0..<(7 + offset + count), id: \.self) { index in
+                if index < 7 {
+                    Text(["D", "S", "T", "Q", "Q", "S", "S"][(calendar.firstWeekday - 1 + index) % 7])
+                        .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, compact ? 1 : 3)
+                        .accessibilityIdentifier("weekday-column-\(index)")
+                } else if index < 7 + offset {
+                    Color.clear.frame(height: compact ? 27 : 39)
+                } else {
+                    let day = calendar.date(byAdding: .day, value: index - 7 - offset, to: first) ?? first
+                    CalendarDay(date: day, selected: calendar.isDate(day, inSameDayAs: selectedDate),
+                                shifts: store.on(day), accent: accent, size: compact ? 27 : 39) { selectedDate = day }
                 }
             }
         }.dynamicTypeSize(...DynamicTypeSize.xxxLarge)

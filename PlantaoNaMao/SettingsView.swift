@@ -85,7 +85,7 @@ struct SettingsView: View {
                 Section("Plantão na Mão") {
                     Label("Dados salvos neste dispositivo", systemImage: "lock.shield")
                     Text("Seus registros ficam disponíveis sem internet. Desinstalar o app pode apagar os dados locais.").font(.footnote).foregroundStyle(.secondary)
-                    LabeledContent("Versão", value: "1.5 · Lembretes e sincronização econômica")
+                    LabeledContent("Versão", value: "1.6 · Calendário e novo ícone")
                 }
                 Section("Widgets") {
                     Label("Pequeno, médio e grande", systemImage: "square.grid.2x2")

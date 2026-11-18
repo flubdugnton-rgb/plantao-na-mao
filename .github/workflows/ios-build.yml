@@ -1,4 +1,4 @@
-name: Compilar Plantão na Mão iOS 1.5
+name: Compilar Plantão na Mão iOS 1.6
 
 on:
   push:
@@ -32,8 +32,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Selecionar Xcode 26 para Liquid Glass
         run: bash scripts/select-xcode.sh
-      - name: Verificar cálculos, pagamentos e migração
-        run: bash scripts/check-models.sh
+      - name: Verificar cálculos, pagamentos, migração e ícone
+        run: |
+          bash scripts/check-models.sh
+          python3 scripts/generate-icon.py
       - name: Preparar XcodeGen
         run: |
           if ! command -v xcodegen >/dev/null 2>&1; then
@@ -112,12 +114,12 @@ jobs:
           mkdir -p build/package/Payload
           ditto build/PlantaoNaMao.xcarchive/Products/Applications/PlantaoNaMao.app build/package/Payload/PlantaoNaMao.app
           test -d build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/Info.plist)" = '1.5'
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex/Info.plist)" = '1.5'
-          ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.5-sem-assinatura.ipa
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/Info.plist)" = '1.6'
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex/Info.plist)" = '1.6'
+          ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.6-sem-assinatura.ipa
           ditto -c -k --keepParent PlantaoNaMao.xcodeproj build/PlantaoNaMao-Xcode.zip
           cat > build/LEIA-ME.txt <<'TXT'
-          Plantão na Mão 1.5
+          Plantão na Mão 1.6
           O IPA deste workflow NÃO está assinado. Para instalar em um iPhone/iPad,
           assine com uma conta/equipe Apple e um perfil de provisionamento válido.
           Para TestFlight/App Store, abra o projeto no Xcode, configure Signing &
@@ -131,12 +133,12 @@ jobs:
           path: build/*.xcresult
           if-no-files-found: ignore
           retention-days: 7
-      - name: Disponibilizar compilação iOS 1.5
+      - name: Disponibilizar compilação iOS 1.6
         uses: actions/upload-artifact@v4
         with:
-          name: PlantaoNaMao-iOS-1.5-sem-assinatura
+          name: PlantaoNaMao-iOS-1.6-sem-assinatura
           path: |
-            build/PlantaoNaMao-1.5-sem-assinatura.ipa
+            build/PlantaoNaMao-1.6-sem-assinatura.ipa
             build/PlantaoNaMao-Xcode.zip
             build/LEIA-ME.txt
           if-no-files-found: error
@@ -145,14 +147,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: PlantaoNaMao-1.5-telas
+          name: PlantaoNaMao-1.6-telas
           path: build/Screenshots
           if-no-files-found: ignore
           retention-days: 14
       - name: Resumo
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<'MD'
-          ## Plantão na Mão iOS 1.5
+          ## Plantão na Mão iOS 1.6
           - Testes de pagamentos, migração e PDFs executados no simulador.
           - Compilação Release para iPhone/iPad concluída.
           - Baixe o IPA **sem assinatura** e o projeto Xcode em **Artifacts**.
@@ -161,7 +163,7 @@ jobs:
 
 
   release-ipa:
-    name: Gerar IPA iOS 1.5
+    name: Gerar IPA iOS 1.6
     runs-on: macos-26-intel
     timeout-minutes: 25
     steps:
@@ -172,6 +174,7 @@ jobs:
       - name: Validar regras e gerar projeto Xcode
         run: |
           bash scripts/check-models.sh
+          python3 scripts/generate-icon.py
           if ! command -v xcodegen >/dev/null 2>&1; then
             brew install xcodegen
           fi
@@ -186,21 +189,21 @@ jobs:
             -archivePath build/Release.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
-      - name: Empacotar IPA 1.5
+      - name: Empacotar IPA 1.6
         run: |
           mkdir -p build/package/Payload
           ditto build/Release.xcarchive/Products/Applications/PlantaoNaMao.app build/package/Payload/PlantaoNaMao.app
           test -d build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/Info.plist)" = '1.5'
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex/Info.plist)" = '1.5'
-          ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.5-sem-assinatura.ipa
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/Info.plist)" = '1.6'
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/package/Payload/PlantaoNaMao.app/PlugIns/PlantaoNaMaoWidgets.appex/Info.plist)" = '1.6'
+          ditto -c -k --keepParent build/package/Payload build/PlantaoNaMao-1.6-sem-assinatura.ipa
           ditto -c -k --keepParent PlantaoNaMao.xcodeproj build/PlantaoNaMao-Xcode.zip
       - name: Disponibilizar IPA e projeto
         uses: actions/upload-artifact@v4
         with:
-          name: PlantaoNaMao-iOS-1.5-IPA
+          name: PlantaoNaMao-iOS-1.6-IPA
           path: |
-            build/PlantaoNaMao-1.5-sem-assinatura.ipa
+            build/PlantaoNaMao-1.6-sem-assinatura.ipa
             build/PlantaoNaMao-Xcode.zip
           if-no-files-found: error
           retention-days: 30

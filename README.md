@@ -1,8 +1,15 @@
-# Plantão na Mão · iOS 1.5
+# Plantão na Mão · iOS 1.6
 
 Agenda nativa para iPhone/iPad, com suporte a iOS 17 ou superior e Liquid Glass nativo no iOS 26.
 
-## Novidades 1.5
+## Novidades 1.6
+
+- Novo ícone aprovado: calendário e relógio em vidro jade, preparado em PNG RGB opaco de 1024 × 1024 pixels, sem recorte ou mudança de composição.
+- Cabeçalhos dos dias da semana e datas agora usam **a mesma grade de sete colunas**, eliminando a diferença de espaçamento entre o cabeçalho e o mês. O alinhamento é mantido nos modos normal e compacto e em meses com diferentes dias iniciais.
+- Mantidos os lembretes locais, a sincronização por alterações e o nome da conta Google da versão 1.5, além do compartilhamento de widgets da 1.4.
+- O teste de interface mede o centro horizontal de cada cabeçalho e da data correspondente em novembro/dezembro de 2026, fevereiro de 2027 e orientação horizontal.
+
+## Recursos da versão 1.5 preservados
 
 - Ajustes > Notificações: habilite lembretes e escolha **24 horas, 12 horas, 6 horas ou 30 minutos antes**. A preferência é local e fica desativada até o usuário habilitar. A permissão do iOS é solicitada nesse momento.
 - Um lembrete local por plantão, com nome, local, datas/horários de início e fim, valor e observações. Funciona sem internet e com o app fechado; apresentação e som dependem da permissão, Foco e ajustes do sistema. Tocar abre a agenda no dia e o plantão correspondente.
@@ -51,7 +58,7 @@ Preservamos PDF individual, escala e pagamentos. O relatório aberto pelo Financ
 
 ## Compilação automática
 
-Os workflows **Compilar Plantão na Mão iOS 1.5** e **Extrair projeto iOS 1.5 automaticamente** são acionados pela branch main e permitem execução manual. A geração do IPA Release é independente dos testes de interface para não bloquear o pacote quando os simuladores do GitHub estiverem indisponíveis. O empacotamento verifica que a extensão .appex está incluída.
+Os workflows **Compilar Plantão na Mão iOS 1.6** e **Extrair projeto iOS 1.6 automaticamente** são acionados pela branch main e permitem execução manual. A geração do IPA Release é independente dos testes de interface para não bloquear o pacote quando os simuladores do GitHub estiverem indisponíveis. O empacotamento verifica que a extensão .appex está incluída.
 
 Baixe os resultados em Artifacts. O IPA automático é **sem assinatura Apple**. Para manter seus dados, atualize a instalação anterior com o mesmo Bundle ID e assinatura compatível, sem desinstalar.
 
