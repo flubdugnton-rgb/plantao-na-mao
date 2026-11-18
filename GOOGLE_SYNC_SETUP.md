@@ -53,3 +53,8 @@ Referências oficiais:
 - https://developers.google.com/workspace/drive/api/guides/appdata
 
 Na versão 1.2, a sincronização grava schema 2 e migra snapshots schema 1. Atualize os outros aparelhos antes de sincronizar; o cálculo por hora e a data de criação fazem parte dos registros sincronizados.
+
+
+## Comportamento na versão 1.5
+
+A sincronização automática acontece após salvar, editar ou excluir plantões, agrupando alterações próximas em 2 segundos. Não há mais timer de 30 segundos. Uma confirmação local do snapshot enviado permite reenviar pendências ao voltar ao app, inclusive após fechar e reabrir. A primeira conexão ou atualização sem essa confirmação concilia os dados uma vez. Falhas conservam a pendência, sem repetição em loop. Para buscar mudanças feitas em outro aparelho, use **Sincronizar agora**. Abrir Ajustes, mudar a aparência ou habilitar lembretes não gera upload dos plantões. A conta conectada mostra o nome do perfil em vez do e-mail.

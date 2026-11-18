@@ -151,6 +151,53 @@ struct ModelChecks {
         let receipt = WidgetReadReceipt(fingerprint: calendarPayload.fingerprint, readAt: chosenDay, days: 2, source: "Chaves")
         let readReceipt = try JSONDecoder().decode(WidgetReadReceipt.self, from: JSONEncoder().encode(receipt))
         check(readReceipt == receipt, "Confirmação identifica os dados realmente lidos")
+        // Reminder dates use the shift's chosen day, including midnight and DST.
+        let now = date(2026, 11, 15)
+        for lead in ReminderLead.allCases {
+            let reminder = ShiftReminder.upcoming([original], lead: lead, now: now, calendar: calendar).first!
+            check(reminder.fireDate == original.interval.start.addingTimeInterval(-Double(lead.rawValue * 60)), "Antecedência exata: \(lead.label)")
+            check(reminder.body.contains("HRC") && reminder.body.contains("07:00") && reminder.body.contains("19:00") && reminder.body.contains("Modelo") && reminder.body.contains("316,32"), "Aviso contém detalhes do plantão")
+            check(WidgetData.date(from: reminder.url) == originalDay, "Toque no aviso abre o dia do plantão")
+            check(reminder.url.absoluteString.contains(original.id.uuidString), "Aviso identifica o plantão exato")
+        }
+        let nightReminder = ShiftReminder.upcoming([shift], lead: .halfHour, now: now, calendar: calendar).first!
+        check(nightReminder.body.contains("18/11/2026 às 07:00"), "Aviso noturno informa a data da saída")
+        check(ShiftReminder.upcoming([original], lead: .day, now: original.interval.start, calendar: calendar).isEmpty, "Não enviar lembretes passados")
+        check(ShiftReminder.upcoming([original], lead: .day, now: original.interval.start.addingTimeInterval(-86400), calendar: calendar).isEmpty, "Não disparar um aviso retroativo no instante atual")
+        var moved = original; moved.date = chosenDay
+        let oldReminder = ShiftReminder.upcoming([original], lead: .day, now: now).first!
+        let newReminder = ShiftReminder.upcoming([moved], lead: .day, now: now).first!
+        check(oldReminder.identifier == newReminder.identifier && oldReminder.fireDate != newReminder.fireDate, "Editar data substitui o mesmo aviso")
+        let many = (0..<70).map { day -> Shift in
+            var item = original; item.id = UUID(); item.date = calendar.date(byAdding: .day, value: day, to: originalDay)!; return item
+        }
+        let reminders = ShiftReminder.upcoming(many.reversed(), lead: .halfHour, now: now, calendar: calendar)
+        check(reminders.count == 64 && reminders.first!.shiftID == many.first!.id && reminders.last!.shiftID == many[63].id, "Priorizar os 64 próximos avisos")
+        var dst = Calendar(identifier: .gregorian); dst.timeZone = TimeZone(identifier: "America/New_York")!
+        let dstDay = dst.date(from: DateComponents(year: 2027, month: 3, day: 14))!
+        let dstShift = Shift(date: dstDay, title: "DST", location: "", start: date(2020, 1, 1, 7), end: date(2020, 1, 1, 19))
+        let dstStart = ShiftRules.interval(day: dstDay, start: dstShift.start, end: dstShift.end, calendar: dst).start
+        let dstReminder = ShiftReminder.upcoming([dstShift], lead: .day, now: dstDay.addingTimeInterval(-172800), calendar: dst).first!
+        check(dstStart.timeIntervalSince(dstReminder.fireDate) == 86400, "24 horas reais mesmo na troca de horário de verão")
+        let suite = "sync-checkpoint-check-" + UUID().uuidString
+        let syncDefaults = UserDefaults(suiteName: suite)!
+        defer { syncDefaults.removePersistentDomain(forName: suite) }
+        let checkpoint = SyncCheckpoint(defaults: syncDefaults)
+        let initialSync = SyncSnapshot(records: [SyncRecord(shift: original, modifiedAt: originalDay, writerID: "phone")])
+        check(checkpoint.needsUpload(initialSync), "Primeira conexão ainda precisa conciliar o backup")
+        try checkpoint.acknowledge(initialSync)
+        check(!checkpoint.needsUpload(initialSync), "Sem alterações não existe sincronização automática")
+        check(!SyncCheckpoint(defaults: syncDefaults).needsUpload(initialSync), "Reabrir app não consulta rede após sucesso")
+        var editedSync = initialSync; editedSync.records[0].shift.notes = "Alterado offline"
+        check(checkpoint.needsUpload(editedSync), "Edição offline fica pendente sem timer")
+        check(SyncCheckpoint(defaults: syncDefaults).needsUpload(editedSync), "Pendência sobrevive ao fechamento do app")
+        try checkpoint.acknowledge(initialSync)
+        check(checkpoint.needsUpload(editedSync), "Resposta de upload antigo não confirma edição feita durante a requisição")
+        try checkpoint.acknowledge(editedSync)
+        check(!checkpoint.needsUpload(editedSync), "Só confirmar snapshot enviado com sucesso")
+        let deletedSync = SyncSnapshot(deletions: [SyncDeletion(id: original.id, modifiedAt: chosenDay, writerID: "phone")])
+        check(checkpoint.needsUpload(deletedSync), "Excluir também pede sincronização")
         print("\(checks) verificações aprovadas · \(TimeZone.current.identifier)")
     }
 }
+

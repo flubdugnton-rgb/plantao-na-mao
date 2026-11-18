@@ -3,6 +3,8 @@ import GoogleSignIn
 
 @main
 struct PlantaoNaMaoApp: App {
+    @UIApplicationDelegateAdaptor(NotificationAppDelegate.self) private var appDelegate
+    @StateObject private var reminders = ShiftNotifications()
     @StateObject private var store = AppLaunch.makeStore()
     @StateObject private var cloud = GoogleSyncController()
     @Environment(\.scenePhase) private var scenePhase
@@ -10,7 +12,7 @@ struct PlantaoNaMaoApp: App {
     @AppStorage("plantao-na-mao.appearance") private var appearance = "system"
     var body: some Scene {
         WindowGroup {
-            ContentView().environmentObject(store).environmentObject(cloud)
+            ContentView().environmentObject(store).environmentObject(cloud).environmentObject(reminders)
                 .tint((ShiftColor(rawValue: theme) ?? .mint).value)
                 .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
                 .environment(\.locale, Locale(identifier: "pt_BR"))
@@ -18,9 +20,11 @@ struct PlantaoNaMaoApp: App {
                     if url.scheme == "plantaonamao" { UserDefaults.standard.set(url.absoluteString, forKey: "widget.pendingURL"); NotificationCenter.default.post(name: .widgetDateSelected, object: url) }
                     else { GIDSignIn.sharedInstance.handle(url) }
                 }
-                .task { await cloud.start(store: store) }
+                .task { reminders.start(store: store); await cloud.start(store: store) }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in reminders.refresh() }
+                .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in reminders.refresh() }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { WidgetBridge.publish(store.shifts); Task { await cloud.resume() } }
+                    if phase == .active { reminders.refresh(); WidgetBridge.publish(store.shifts); Task { await cloud.resume() } }
                     else { cloud.pause(); WidgetBridge.publish(store.shifts) }
                 }
         }
@@ -104,6 +108,7 @@ struct ScheduleView: View {
             .onReceive(NotificationCenter.default.publisher(for: .widgetDateSelected)) { event in
                 guard let url = event.object as? URL, let date = WidgetData.date(from: url) else { return }
                 selectedDate = date
+                openNotificationShift(url)
                 UserDefaults.standard.removeObject(forKey: "widget.pendingURL")
             }
         }
@@ -172,8 +177,14 @@ struct ScheduleView: View {
     }
     private func applyWidgetURL() {
         guard let string = UserDefaults.standard.string(forKey: "widget.pendingURL"), let url = URL(string: string) else { return }
-        if let date = WidgetData.date(from: url) { selectedDate = date }
+        if let date = WidgetData.date(from: url) { selectedDate = date; openNotificationShift(url) }
         UserDefaults.standard.removeObject(forKey: "widget.pendingURL")
+    }
+
+    private func openNotificationShift(_ url: URL) {
+        guard let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "shift" })?.value,
+              let id = UUID(uuidString: value) else { return }
+        if let shift = store.shifts.first(where: { $0.id == id }) { selectedDate = shift.date; editing = shift }
     }
 
     private func moveMonth(_ delta: Int) {
@@ -264,3 +275,4 @@ struct ShiftRow: View {
         }.padding(16).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
     }
 }
+

@@ -31,7 +31,7 @@ enum SyncFailure: LocalizedError {
         case .newerVersion: return "Há dados de uma versão mais recente. Atualize o app para sincronizar. Seus registros locais foram preservados."
         case .invalidData: return "Não foi possível ler os dados do Google. Seus registros locais foram preservados."
         case .permission: return "O Google não autorizou o acesso à pasta do app. Reconecte sua conta. Se o problema continuar, verifique se a API Google Drive está ativada no projeto do app."
-        case .serviceUnavailable: return "O Google está indisponível ou sem conexão. Seus dados estão salvos no aparelho; tentaremos novamente automaticamente."
+        case .serviceUnavailable: return "O Google está indisponível ou sem conexão. Seus dados estão salvos no aparelho; as alterações pendentes serão reenviadas ao voltar ao app ou tocar em Sincronizar agora."
         case .wrongAccount: return "Estes registros estão vinculados a outra conta Google. Conecte a conta usada anteriormente para manter seus dados separados."
         case .notConnected: return "Conecte sua conta Google em Ajustes para sincronizar."
         }
@@ -72,3 +72,4 @@ enum SyncMerge {
                             deletions: deleted.values.sorted { $0.id.uuidString < $1.id.uuidString })
     }
 }
+
