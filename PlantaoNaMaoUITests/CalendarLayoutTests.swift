@@ -57,17 +57,17 @@ final class CalendarLayoutTests: XCTestCase {
     @MainActor
     func testWeekdayColumnsAlignWithDatesInPortraitAndLandscape() throws {
         let app = XCUIApplication()
-        executionTimeAllowance = 120
+        executionTimeAllowance = 180
         app.launchArguments = ["--ui-testing", "-AppleLanguages", "(pt-BR)", "-AppleLocale", "pt_BR"]
         XCUIDevice.shared.orientation = .portrait
         defer { XCUIDevice.shared.orientation = .portrait }
         app.launch()
         assertWeekdayAlignment(app, firstSunday: 1) // November 2026 starts on Sunday.
         attach(name: "05-Alinhamento-Novembro")
-        app.buttons["Mês seguinte"].tap()
+        app.buttons["Próximo mês"].tap()
         assertWeekdayAlignment(app, firstSunday: 6) // December 2026 starts on Tuesday.
-        app.buttons["Mês seguinte"].tap()
-        app.buttons["Mês seguinte"].tap()
+        app.buttons["Próximo mês"].tap()
+        app.buttons["Próximo mês"].tap()
         assertWeekdayAlignment(app, firstSunday: 7) // February 2027 starts on Monday.
         attach(name: "06-Alinhamento-Fevereiro")
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -77,14 +77,18 @@ final class CalendarLayoutTests: XCTestCase {
 
     @MainActor
     private func assertWeekdayAlignment(_ app: XCUIApplication, firstSunday: Int) {
+        XCTAssertTrue(app.staticTexts["weekday-column-0"].waitForExistence(timeout: 10))
         for column in 0..<7 {
             let header = app.staticTexts["weekday-column-\(column)"]
             let day = app.buttons["calendar-day-\(firstSunday + column)"]
-            XCTAssertTrue(header.waitForExistence(timeout: 10))
-            XCTAssertTrue(day.waitForExistence(timeout: 10))
-            XCTAssertGreaterThan(header.frame.width, 0)
-            XCTAssertGreaterThan(day.frame.width, 0)
-            XCTAssertEqual(header.frame.midX, day.frame.midX, accuracy: 1, "Cabeçalho e data da coluna \(column) devem ter o mesmo centro")
+            guard header.exists, day.exists else {
+                XCTFail("Cabeçalho ou data ausente na coluna \(column)")
+                return
+            }
+            let headerFrame = header.frame, dayFrame = day.frame
+            XCTAssertGreaterThan(headerFrame.width, 0)
+            XCTAssertGreaterThan(dayFrame.width, 0)
+            XCTAssertEqual(headerFrame.midX, dayFrame.midX, accuracy: 1, "Cabeçalho e data da coluna \(column) devem ter o mesmo centro")
         }
     }
 

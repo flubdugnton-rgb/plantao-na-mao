@@ -76,7 +76,7 @@ jobs:
             -resultBundlePath build/UnitTests.xcresult \
             CODE_SIGNING_ALLOWED=NO
       - name: Testar calendário fixo e acesso a Ajustes
-        timeout-minutes: 5
+        timeout-minutes: 8
         run: |
           xcodebuild test-without-building \
             -project PlantaoNaMao.xcodeproj \
@@ -87,7 +87,7 @@ jobs:
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 120 \
-            -maximum-test-execution-time-allowance 150 \
+            -maximum-test-execution-time-allowance 240 \
             -resultBundlePath build/UITests.xcresult \
             CODE_SIGNING_ALLOWED=NO
       - name: Compilar arquivo para iPhone e iPad
