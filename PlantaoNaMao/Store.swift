@@ -33,6 +33,7 @@ final class ShiftStore: ObservableObject {
     @discardableResult
     func save(_ shift: Shift) -> Bool {
         guard canWrite else { return false }
+        if snapshot.records.first(where: { $0.shift.id == shift.id })?.shift == shift { return true }
         var updated = snapshot
         updated.records.removeAll { $0.shift.id == shift.id }
         updated.records.append(SyncRecord(shift: shift, modifiedAt: timestamp(for: shift.id), writerID: deviceID))
@@ -79,3 +80,4 @@ final class ShiftStore: ObservableObject {
         } catch { storageError = "Não foi possível salvar. Seus plantões anteriores continuam preservados." }
     }
 }
+

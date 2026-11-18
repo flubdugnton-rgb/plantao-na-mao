@@ -4,6 +4,8 @@ import GoogleSignIn
 struct SettingsView: View {
     @EnvironmentObject private var cloud: GoogleSyncController
     @EnvironmentObject private var store: ShiftStore
+    @EnvironmentObject private var reminders: ShiftNotifications
+    @Environment(\.openURL) private var openURL
     @State private var widgetStatus: String?
     @State private var widgetCheckID = UUID()
     @AppStorage("plantao-na-mao.theme") private var theme = ShiftColor.mint.rawValue
@@ -15,8 +17,8 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    if let email = cloud.email {
-                        Label(email, systemImage: "person.crop.circle.badge.checkmark")
+                    if let name = cloud.displayName {
+                        Label(name, systemImage: "person.crop.circle.badge.checkmark")
                         Toggle("Sincronização automática", isOn: $cloud.automatic).disabled(!cloud.hasDriveAccess)
                         if cloud.isSyncing {
                             HStack { ProgressView(); Text("Sincronizando seus plantões…") }
@@ -36,7 +38,33 @@ struct SettingsView: View {
                         Label(error, systemImage: "exclamationmark.icloud").font(.footnote).foregroundStyle(.orange)
                     }
                 } header: { Text("Conta Google") } footer: {
-                    Text("Seus plantões ficam na pasta privada do app no Google Drive. Após conectar, sincronizamos ao abrir, depois de alterações e periodicamente enquanto o app estiver ativo. Sem internet, tudo continua salvo neste aparelho. A futura versão para Mac poderá usar a mesma conta.")
+                    Text("Seus plantões ficam na pasta privada do app no Google Drive. A sincronização automática ocorre após alterações nos plantões, sem consultas periódicas. Alterações pendentes sem internet são reenviadas ao voltar ao app. Para buscar alterações de outro aparelho, toque em Sincronizar agora. Sem internet, tudo continua salvo neste aparelho. A futura versão para Mac poderá usar a mesma conta.")
+                }
+                Section {
+                    Toggle("Lembretes de plantão", isOn: Binding(get: { reminders.enabled }, set: { value in
+                        Task { await reminders.setEnabled(value) }
+                    })).disabled(reminders.requestingPermission)
+                        .accessibilityIdentifier("reminders-enabled")
+                    if reminders.enabled {
+                        Picker("Avisar", selection: Binding(get: { reminders.lead }, set: { reminders.setLead($0) })) {
+                            ForEach(ReminderLead.allCases) { Text($0.label).tag($0) }
+                        }.accessibilityIdentifier("reminder-lead")
+                        if reminders.denied {
+                            Text("As notificações estão bloqueadas no iPhone. Autorize o Plantão na Mão nos Ajustes do sistema.").font(.footnote).foregroundStyle(.orange)
+                            Button("Abrir ajustes do iPhone") {
+                                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                            }
+                        }
+                        if let message = reminders.errorMessage {
+                            Text(message).font(.footnote).foregroundStyle(.orange)
+                            Button("Tentar agendar novamente") { reminders.refresh() }
+                        }
+                        if reminders.hasMoreReminders {
+                            Text("Os próximos 64 lembretes estão agendados. Abra o app para renovar os seguintes.").font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                } header: { Text("Notificações") } footer: {
+                    Text("Escolha um aviso por plantão, com nome, local, horário, valor e observações. Os lembretes funcionam sem internet e são atualizados ao editar ou excluir plantões. O aviso só é agendado se o horário escolhido ainda não passou. A exibição e o som seguem os ajustes de notificações e Foco do iPhone.")
                 }
                 Section("Seu estilo") {
                     Picker("Aparência", selection: $appearance) {
@@ -57,7 +85,7 @@ struct SettingsView: View {
                 Section("Plantão na Mão") {
                     Label("Dados salvos neste dispositivo", systemImage: "lock.shield")
                     Text("Seus registros ficam disponíveis sem internet. Desinstalar o app pode apagar os dados locais.").font(.footnote).foregroundStyle(.secondary)
-                    LabeledContent("Versão", value: "1.4 · Compartilhamento do widget")
+                    LabeledContent("Versão", value: "1.5 · Lembretes e sincronização econômica")
                 }
                 Section("Widgets") {
                     Label("Pequeno, médio e grande", systemImage: "square.grid.2x2")
@@ -124,3 +152,4 @@ private struct NativeGoogleSignInButton: UIViewRepresentable {
         @objc func tapped() { action() }
     }
 }
+

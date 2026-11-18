@@ -1,8 +1,18 @@
-# Plantão na Mão · iOS 1.4
+# Plantão na Mão · iOS 1.5
 
 Agenda nativa para iPhone/iPad, com suporte a iOS 17 ou superior e Liquid Glass nativo no iOS 26.
 
-## Novidades 1.4
+## Novidades 1.5
+
+- Ajustes > Notificações: habilite lembretes e escolha **24 horas, 12 horas, 6 horas ou 30 minutos antes**. A preferência é local e fica desativada até o usuário habilitar. A permissão do iOS é solicitada nesse momento.
+- Um lembrete local por plantão, com nome, local, datas/horários de início e fim, valor e observações. Funciona sem internet e com o app fechado; apresentação e som dependem da permissão, Foco e ajustes do sistema. Tocar abre a agenda no dia e o plantão correspondente.
+- Editar, excluir ou receber mudanças pelo Google atualiza os lembretes. Trocar a antecedência reagenda os avisos. Desativar remove os avisos pendentes e entregues do app. Não são disparados avisos retroativos quando a antecedência já passou.
+- Os próximos **64** avisos futuros ficam agendados, respeitando o limite do iOS. Ao abrir/retornar ao app ou alterar plantões, a fila é renovada. Ajustes informa quando há mais plantões além dessa fila. Não há polling, servidor, push remoto ou tarefa contínua em segundo plano.
+- Sincronização Google **por alteração**, com agrupamento de edições por 2 segundos. Removido o timer de 30 segundos. O snapshot confirmado é persistido somente após upload bem-sucedido, e edições feitas durante a requisição continuam pendentes. Retornar ao app só sincroniza se houver pendências; falhas não iniciam repetição periódica. A primeira conexão/atualização sem confirmação anterior faz uma conciliação inicial.
+- Para receber alterações feitas em outro aparelho sem editar neste, use **Sincronizar agora**. Não há busca periódica remota. Sem internet, as alterações ficam salvas e são reenviadas ao voltar ao app, editar novamente ou sincronizar manualmente.
+- Conta Google mostra o **nome** do perfil, com “Conta Google conectada” caso ele não esteja disponível; o e-mail não é exibido. Vinculação de conta e tokens permanecem com as regras anteriores.
+
+## Recursos da versão 1.4 preservados
 
 - Alternativa ao App Group: o app publica uma projeção de datas e cores no Keychain, e o widget a lê pelos grupos autorizados pela assinatura. Isso atende assinadores que aplicam o mesmo grupo de Chaves ao app e à extensão, como pode ocorrer no KSign. Não depende de um Team ID fixo, de leitura do perfil de provisionamento, nem de APIs privadas.
 - A projeção contém somente datas e cores do mês anterior, atual e seguinte, mais aparência e horário de atualização. Não envia nomes, valores, locais, anotações, IDs dos registros ou tokens Google às Chaves.
@@ -41,10 +51,11 @@ Preservamos PDF individual, escala e pagamentos. O relatório aberto pelo Financ
 
 ## Compilação automática
 
-Os workflows **Compilar Plantão na Mão iOS 1.4** e **Extrair projeto iOS 1.4 automaticamente** são acionados pela branch main e permitem execução manual. A geração do IPA Release é independente dos testes de interface para não bloquear o pacote quando os simuladores do GitHub estiverem indisponíveis. O empacotamento verifica que a extensão .appex está incluída.
+Os workflows **Compilar Plantão na Mão iOS 1.5** e **Extrair projeto iOS 1.5 automaticamente** são acionados pela branch main e permitem execução manual. A geração do IPA Release é independente dos testes de interface para não bloquear o pacote quando os simuladores do GitHub estiverem indisponíveis. O empacotamento verifica que a extensão .appex está incluída.
 
 Baixe os resultados em Artifacts. O IPA automático é **sem assinatura Apple**. Para manter seus dados, atualize a instalação anterior com o mesmo Bundle ID e assinatura compatível, sem desinstalar.
 
 ## Testes
 
-`bash scripts/check-models.sh` valida valores, preço por hora, descontos, períodos, histórico mensal, migração e conciliação em dois fusos. Os testes iOS incluem PDFs, persistência, últimos três modelos e erros da sincronização. Os testes de interface verificam o dia atual na agenda, o calendário fixo, o acesso a Ajustes e o caminho selecionar dia 20 → reaproveitar preset → salvar → abrir o plantão no dia 20. As verificações de modelos cobrem datas exatas de competência, a leitura/regravação do arquivo, a projeção do calendário sem dados financeiros e as identificações de confirmação. Os testes locais não substituem a validação do compartilhamento entre processos no iPhone com a assinatura escolhida.
+`bash scripts/check-models.sh` valida valores, preço por hora, descontos, períodos, histórico mensal, migração e conciliação em dois fusos. As verificações de modelos também cobrem as quatro antecedências, virada de dia/DST, fila de 64 avisos, payload de navegação e confirmação persistente de sincronização, inclusive edição offline e durante upload. Os testes iOS exercitam a substituição/cancelamento de lembretes com central simulada, bloqueio de permissão e falhas de agendamento. A entrega real precisa ser conferida no iPhone com a assinatura escolhida. Os testes iOS incluem PDFs, persistência, últimos três modelos e erros da sincronização. Os testes de interface verificam o dia atual na agenda, o calendário fixo, o acesso a Ajustes e o caminho selecionar dia 20 → reaproveitar preset → salvar → abrir o plantão no dia 20. As verificações de modelos cobrem datas exatas de competência, a leitura/regravação do arquivo, a projeção do calendário sem dados financeiros e as identificações de confirmação. Os testes locais não substituem a validação do compartilhamento entre processos no iPhone com a assinatura escolhida.
+
