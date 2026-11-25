@@ -17,3 +17,10 @@ PlantaoNaMao/Info.plist
 PlantaoNaMaoWidgets/Info.plist
 PlantaoNaMao/*.entitlements
 PlantaoNaMaoWidgets/*.entitlements
+
+PlantaoNaMaoMac/Info.plist
+PlantaoNaMaoMac/*.entitlements
+PlantaoNaMaoMacWidgets/Info.plist
+PlantaoNaMaoMacWidgets/*.entitlements
+PlantaoNaMaoMac/Assets.xcassets/MacAppIcon.appiconset/*.png
+dist/

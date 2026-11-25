@@ -12,12 +12,14 @@ struct MoneyEntry: View {
     var body: some View {
         HStack {
             Text(title)
-            TextField("0,00", text: $text).keyboardType(.decimalPad)
+            TextField("0,00", text: $text).decimalEntryKeyboard()
                 .multilineTextAlignment(.trailing).focused($focused)
                 .onChange(of: focused) { _, active in if !active { normalize() } }
                 .onSubmit { normalize() }
         }
+        #if os(iOS)
         .toolbar { ToolbarItemGroup(placement: .keyboard) { if focused { Spacer(); Button("Concluir") { normalize(); focused = false } } } }
+        #endif
     }
     private func normalize() { if let cents = Money.parse(text) { text = Money.input(cents) } }
 }
@@ -85,8 +87,8 @@ struct ShiftEditor: View {
             Form {
                 if existing == nil && !store.recent.isEmpty { recentSection }
                 Section("Seu plantão") {
-                    TextField("Nome do plantão", text: $title).textInputAutocapitalization(.sentences).accessibilityIdentifier("shift-title")
-                    TextField("Hospital, clínica ou local", text: $location).textInputAutocapitalization(.words)
+                    TextField("Nome do plantão", text: $title).sentenceEntryCapitalization().accessibilityIdentifier("shift-title")
+                    TextField("Hospital, clínica ou local", text: $location).wordEntryCapitalization()
                     if !store.locations.isEmpty {
                         Menu("Usar local já cadastrado") { ForEach(store.locations, id: \.self) { name in Button(name) { location = name } } }
                     }
@@ -121,7 +123,7 @@ struct ShiftEditor: View {
                 Section { Button { showingPDF = true } label: { Label("Exportar este plantão em PDF", systemImage: "doc.richtext") }.disabled(!valid) }
                 if existing != nil { Section { Button("Excluir plantão", role: .destructive) { confirmingDelete = true }.disabled(!store.canWrite) } }
             }
-            .navigationTitle(existing == nil ? "Novo plantão" : "Editar plantão").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(existing == nil ? "Novo plantão" : "Editar plantão").inlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Salvar") { if store.save(draft) { dismiss() } else { validationError = store.storageError ?? "Confira os campos e tente novamente." } }.bold().disabled(!valid).accessibilityIdentifier("save-shift") }
@@ -131,7 +133,7 @@ struct ShiftEditor: View {
             } message: { Text("Esta ação remove o plantão e sua previsão de pagamento.") }
             .sheet(isPresented: $showingPDF) { ReportView(month: date, singleShift: draft) }
             .alert("Não foi possível salvar", isPresented: Binding(get: { validationError != nil }, set: { if !$0 { validationError = nil } })) { Button("OK", role: .cancel) { validationError = nil } } message: { Text(validationError ?? "") }
-        }
+        }.editorWindowSize()
     }
     private var recentSection: some View {
         Section {

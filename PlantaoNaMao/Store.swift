@@ -49,7 +49,9 @@ final class ShiftStore: ObservableObject {
     }
     func mergeRemote(_ remote: SyncSnapshot) throws {
         guard canWrite else { throw SyncFailure.invalidData }
-        persist(SyncMerge.combine([snapshot, try remote.validated()]), localChange: false)
+        let merged = SyncMerge.combine([snapshot, try remote.validated()])
+        guard merged != snapshot else { return }
+        persist(merged, localChange: false)
         if !canWrite { throw SyncFailure.invalidData }
     }
     func togglePaid(_ shift: Shift) {

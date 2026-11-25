@@ -1,3 +1,9 @@
+## Versão nativa para Mac
+
+O repositório agora inclui o esquema **PlantaoNaMaoMac**, com a barra lateral e o login Google inspirados no Kepleræ e o ícone original do Plantão na Mão. O esquema **PlantaoNaMao** continua sendo iPhone/iPad. As duas versões compartilham os dados e as regras de sincronização pelo Google.
+
+Compilação automática: `.github/workflows/build-macos.yml`. Instruções, limitações da assinatura de widgets e validação em aparelhos: [MACOS_SETUP.md](MACOS_SETUP.md).
+
 # Plantão na Mão · iOS 1.6
 
 Agenda nativa para iPhone/iPad, com suporte a iOS 17 ou superior e Liquid Glass nativo no iOS 26.

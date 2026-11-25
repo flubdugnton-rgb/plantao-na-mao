@@ -1,3 +1,7 @@
+## Versão macOS
+
+A extensão nativa do Mac usa o mesmo calendário e formato de dados, com targets **PlantaoNaMaoMac** e **PlantaoNaMaoMacWidgets**. A sincronização pelo Google não exige Apple Developer; a autorização para compartilhar dados localmente com o widget exige uma assinatura Apple compatível para app e extensão. O download ad hoc permite testar o app, mas não comprova acesso do widget ao App Group. Leia [MACOS_SETUP.md](MACOS_SETUP.md).
+
 # Widgets · Plantão na Mão 1.4
 
 O widget usa somente o calendário com aros, com tamanhos pequeno, médio e grande e temas claro/escuro. O iOS controla o momento das atualizações. Uma extensão compilada e presente no IPA não garante acesso aos dados: isso depende das permissões na assinatura instalada.

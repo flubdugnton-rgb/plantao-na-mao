@@ -7,7 +7,7 @@ struct DriveRemoteState {
 
 actor GoogleDriveSync {
     private let session: URLSession
-    private static let prefix = "plantao-na-mao-sync-v1-"
+    private static let prefix = GoogleCloudConfiguration.syncFilePrefix
     init(session: URLSession = .shared) { self.session = session }
 
     func download(deviceID: String, token: String) async throws -> DriveRemoteState {

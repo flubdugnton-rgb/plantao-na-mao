@@ -1,6 +1,10 @@
 import SwiftUI
 import Charts
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 struct DashboardView: View {
     @EnvironmentObject private var store: ShiftStore
@@ -52,7 +56,7 @@ struct DashboardView: View {
                 }
             }.navigationTitle("Painel mensal")
                 .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in referenceDate = Date() }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in referenceDate = Date() }
+                .onReceive(NotificationCenter.default.publisher(for: Notification.Name.plantaoWillEnterForeground)) { _ in referenceDate = Date() }
         }
     }
 }

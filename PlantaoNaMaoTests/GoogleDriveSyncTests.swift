@@ -1,5 +1,7 @@
 import XCTest
+#if os(iOS)
 @testable import PlantaoNaMao
+#endif
 
 private final class DriveMockProtocol: URLProtocol {
     static var handler: ((URLRequest) throws -> (Int, Data))?

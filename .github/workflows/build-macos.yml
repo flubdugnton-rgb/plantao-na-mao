@@ -1,0 +1,72 @@
+name: Compilar Plantão na Mão macOS
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'PlantaoNaMao/**'
+      - 'PlantaoNaMaoMac/**'
+      - 'PlantaoNaMaoWidgets/**'
+      - 'PlantaoNaMaoTests/**'
+      - 'PlantaoNaMaoMacTests/**'
+      - 'PlantaoNaMaoMacUITests/**'
+      - 'Tests/**'
+      - 'scripts/**'
+      - 'project.yml'
+      - '.github/workflows/build-macos.yml'
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: macos-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-macos:
+    name: Validar app e widget macOS
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Selecionar Xcode 26
+        run: bash scripts/select-xcode.sh
+      - name: Preparar XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
+      - name: Testar e compilar Mac Intel e Apple Silicon
+        run: bash scripts/build-macos.sh
+      - name: Extrair capturas dos testes
+        if: always()
+        run: |
+          if [ -d build/macOS/MacTests.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/macOS/MacTests.xcresult --output-path build/macOS/Screenshots || true
+          fi
+      - name: Disponibilizar testes e capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlantaoNaMao-macOS-testes
+          path: |
+            build/macOS/MacTests.xcresult
+            build/macOS/Screenshots
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Disponibilizar app e instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlantaoNaMao-macOS-1.6
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/SHA256SUMS.txt
+            MACOS_SETUP.md
+          if-no-files-found: error
+          retention-days: 30
+      - name: Resumo
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'MD'
+          ## Plantão na Mão para macOS
+          App e extensão de widget compilados para Intel e Apple Silicon.
+          Login Google com o cliente nativo do mesmo projeto do iOS/Kepleræ.
+          Testes de conciliação, exclusões, PDFs, lembretes e interface executados.
+          O download usa assinatura ad hoc para testes. Widgets com App Group exigem assinatura e autorização Apple; consulte MACOS_SETUP.md.
+          MD

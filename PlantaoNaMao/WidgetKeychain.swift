@@ -17,6 +17,10 @@ enum WidgetKeychain {
                                     kSecAttrAccount as String: account,
                                     kSecAttrSynchronizable as String: false]
         if let group { result[kSecAttrAccessGroup as String] = group }
+        #if os(macOS)
+        // The Mac widget uses signed access groups, without legacy Keychain ACL prompts.
+        result[kSecUseDataProtectionKeychain as String] = true
+        #endif
         return result
     }
     @discardableResult

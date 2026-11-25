@@ -1,5 +1,11 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
+typealias ReportColor = UIColor
+#else
+import AppKit
+typealias ReportColor = NSColor
+#endif
 import UniformTypeIdentifiers
 
 struct PDFFile: FileDocument {
@@ -15,6 +21,7 @@ struct SharePDF: Identifiable {
     let url: URL
 }
 
+#if os(iOS)
 struct ActivitySheet: UIViewControllerRepresentable {
     let url: URL
     func makeUIViewController(context: Context) -> UIActivityViewController {
@@ -22,6 +29,8 @@ struct ActivitySheet: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+
+#endif
 
 struct ReportView: View {
     @EnvironmentObject private var store: ShiftStore
@@ -97,7 +106,7 @@ struct ReportView: View {
                     } label: { Label("Compartilhar ou imprimir PDF", systemImage: "square.and.arrow.up") }.disabled(items.isEmpty)
                 } footer: { Text(items.isEmpty ? "Não há registros para exportar neste período." : "No menu de compartilhamento, escolha WhatsApp, Mail, AirDrop ou Imprimir.") }
             }
-            .navigationTitle("Exportar PDF").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Exportar PDF").inlineNavigationTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Concluir") { dismiss() } } }
             .fileExporter(isPresented: $exporting, document: pdf, contentType: .pdf, defaultFilename: filename) { result in
                 if case .failure(let failure) = result { error = failure.localizedDescription }
@@ -106,14 +115,15 @@ struct ReportView: View {
             .alert("Não foi possível exportar", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
                 Button("OK", role: .cancel) { error = nil }
             } message: { Text(error ?? "") }
-        }
+        }.editorWindowSize()
     }
     private func generate() -> Data {
         PDFReport.make(shifts: items, title: singleShift == nil ? kind.rawValue : "Detalhes do plantão", period: period,
-                       includeNotes: includeNotes, color: UIColor(ShiftColor.mint.value), summary: financialSummary)
+                       includeNotes: includeNotes, color: ReportColor(ShiftColor.mint.value), summary: financialSummary)
     }
 }
 
+#if os(iOS)
 enum PDFReport {
     // A4 in points. Text is drawn as selectable text, not as a screenshot.
     static func make(shifts: [Shift], title: String, period: String, includeNotes: Bool, color: UIColor, summary: [String] = []) -> Data {
@@ -185,3 +195,5 @@ enum PDFReport {
         }
     }
 }
+
+#endif

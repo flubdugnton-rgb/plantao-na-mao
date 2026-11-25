@@ -1,6 +1,8 @@
 import XCTest
 import UserNotifications
+#if os(iOS)
 @testable import PlantaoNaMao
+#endif
 
 private final class ReminderCenterMock: ReminderCenter {
     var status: UNAuthorizationStatus = .authorized

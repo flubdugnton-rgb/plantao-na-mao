@@ -122,6 +122,7 @@ final class ShiftNotifications: ObservableObject {
     func waitUntilSettled() async { await worker?.value }
 }
 
+#if os(iOS)
 final class NotificationAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
@@ -143,3 +144,5 @@ final class NotificationAppDelegate: NSObject, UIApplicationDelegate, UNUserNoti
         } else { completionHandler() }
     }
 }
+
+#endif

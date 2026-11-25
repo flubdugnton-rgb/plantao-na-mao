@@ -1,6 +1,8 @@
 import XCTest
 import PDFKit
+#if os(iOS)
 @testable import PlantaoNaMao
+#endif
 
 @MainActor
 final class PDFTests: XCTestCase {

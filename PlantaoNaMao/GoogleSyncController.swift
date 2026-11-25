@@ -13,7 +13,7 @@ final class GoogleSyncController: ObservableObject {
     @Published var automatic: Bool {
         didSet {
             defaults.set(automatic, forKey: "plantao-na-mao.google-auto")
-            if automatic { requestSync() } else { debounce?.cancel(); resyncRequested = false }
+            if automatic { startPolling(); requestSync() } else { debounce?.cancel(); polling?.cancel(); polling = nil; resyncRequested = false }
         }
     }
     private let scope = "https://www.googleapis.com/auth/drive.appdata"
@@ -24,6 +24,7 @@ final class GoogleSyncController: ObservableObject {
     private weak var store: ShiftStore?
     private var changes: AnyCancellable?
     private var debounce: Task<Void, Never>?
+    private var polling: Task<Void, Never>?
     private var generation = UUID()
     private var resyncRequested = false
     private var didStart = false
@@ -73,9 +74,22 @@ final class GoogleSyncController: ObservableObject {
     }
     func resume() async {
         active = true
-        await syncIfChanged()
+        guard automatic else { return }
+        startPolling()
+        // Pull changes from the Mac even when the iPhone has no pending local edits.
+        await syncNow()
     }
-    func pause() { active = false; debounce?.cancel() }
+    func pause() { active = false; debounce?.cancel(); polling?.cancel(); polling = nil }
+    private func startPolling() {
+        guard active, automatic, polling == nil, displayName != nil, !AppLaunch.isUITest else { return }
+        polling = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(nanoseconds: 30_000_000_000) } catch { return }
+                guard let self, self.active, self.automatic, self.displayName != nil else { return }
+                await self.syncNow()
+            }
+        }
+    }
     private func syncIfChanged() async {
         guard active, automatic, let store, checkpoint.needsUpload(store.snapshot) else { return }
         await syncNow()
@@ -104,9 +118,11 @@ final class GoogleSyncController: ObservableObject {
             // Include any edits made while the remote files were being downloaded.
             let revision = store.revision
             let outgoing = store.snapshot
-            try await drive.upload(outgoing, deviceID: store.deviceID, fileID: remote.ownFileID, token: token)
-            guard generation == ticket else { return }
-            try checkpoint.acknowledge(outgoing)
+            if checkpoint.needsUpload(outgoing) || remote.ownFileID == nil {
+                try await drive.upload(outgoing, deviceID: store.deviceID, fileID: remote.ownFileID, token: token)
+                guard generation == ticket else { return }
+                try checkpoint.acknowledge(outgoing)
+            }
             lastSync = Date()
             defaults.set(lastSync?.timeIntervalSince1970, forKey: "plantao-na-mao.google-last-sync")
             if store.revision != revision { resyncRequested = true }
