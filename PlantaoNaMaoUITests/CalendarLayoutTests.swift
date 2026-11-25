@@ -2,6 +2,47 @@ import XCTest
 
 final class CalendarLayoutTests: XCTestCase {
     @MainActor
+    func testCalendarSwipesChangeMonthsWithoutBreakingDaySelection() throws {
+        let app = XCUIApplication()
+        executionTimeAllowance = 180
+        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(pt-BR)", "-AppleLocale", "pt_BR"]
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        let calendar = app.otherElements["fixed-calendar"]
+        XCTAssertTrue(calendar.waitForExistence(timeout: 10))
+        assertMonth(app, "Novembro")
+        calendar.swipeLeft()
+        assertMonth(app, "Dezembro")
+        XCTAssertTrue(app.buttons["calendar-day-17"].isSelected)
+        calendar.swipeLeft()
+        assertMonth(app, "Janeiro")
+        XCTAssertTrue(app.staticTexts["2027"].exists)
+        calendar.swipeRight()
+        assertMonth(app, "Dezembro")
+        app.buttons["calendar-day-20"].tap()
+        XCTAssertTrue(app.buttons["calendar-day-20"].isSelected)
+        calendar.swipeRight()
+        assertMonth(app, "Novembro")
+        XCTAssertTrue(app.buttons["calendar-day-20"].isSelected)
+        calendar.swipeUp()
+        assertMonth(app, "Novembro")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        calendar.swipeLeft()
+        assertMonth(app, "Dezembro")
+        app.buttons["calendar-day-21"].tap()
+        XCTAssertTrue(app.buttons["calendar-day-21"].isSelected)
+        attach(name: "08-Deslize-do-calendario")
+    }
+
+    @MainActor
+    private func assertMonth(_ app: XCUIApplication, _ name: String) {
+        let title = app.staticTexts["large-current-month"]
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", name), object: title)
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
+    }
+
+    @MainActor
     func testCalendarRemainsFixedWhileAgendaScrolls() throws {
         let app = XCUIApplication()
         executionTimeAllowance = 120

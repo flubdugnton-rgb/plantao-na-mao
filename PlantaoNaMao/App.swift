@@ -79,7 +79,7 @@ struct ScheduleView: View {
                 // Only the agenda scrolls. The month and calendar remain fixed.
                 VStack(spacing: compact ? 6 : 12) {
                     monthHeader(compact: compact)
-                    MonthCalendar(selectedDate: $selectedDate, accent: accent, compact: compact)
+                    MonthCalendar(selectedDate: $selectedDate, accent: accent, compact: compact, onMonthChange: moveMonth)
                         .padding(.horizontal, 10).padding(.vertical, compact ? 4 : 8)
                         .background(Color(.secondarySystemGroupedBackground).opacity(0.8), in: RoundedRectangle(cornerRadius: 24))
                         .padding(.horizontal, 12)
@@ -194,16 +194,76 @@ struct ScheduleView: View {
 
 struct MonthCalendar: View {
     @EnvironmentObject private var store: ShiftStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var selectedDate: Date
     let accent: Color
     let compact: Bool
+    let onMonthChange: (Int) -> Void
+    @GestureState(resetTransaction: Transaction(animation: .easeOut(duration: 0.18))) private var dragOffset: CGFloat = 0
+    @State private var transitionOffset: CGFloat = 0
+    @State private var isPaging = false
     private var calendar: Calendar { Calendar.current }
-    private var first: Date { calendar.date(from: calendar.dateComponents([.year, .month], from: selectedDate)) ?? selectedDate }
-    private var offset: Int { (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7 }
-    private var count: Int { calendar.range(of: .day, in: .month, for: selectedDate)?.count ?? 30 }
     var body: some View {
+        // Keep the current grid's intrinsic height while adjacent months follow the finger.
+        monthGrid(for: selectedDate).hidden().accessibilityHidden(true)
+            .overlay {
+                GeometryReader { geometry in
+                    HStack(alignment: .top, spacing: 0) {
+                        ForEach(-1...1, id: \.self) { page in
+                            let date = calendar.date(byAdding: .month, value: page, to: selectedDate) ?? selectedDate
+                            monthGrid(for: date)
+                                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+                                .accessibilityHidden(page != 0)
+                                .allowsHitTesting(page == 0)
+                        }
+                    }
+                    .offset(x: -geometry.size.width + (isPaging ? transitionOffset : dragOffset))
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .highPriorityGesture(monthSwipe(width: geometry.size.width))
+                }
+            }
+            .clipped()
+            .allowsHitTesting(!isPaging)
+    }
+
+    private func monthSwipe(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 12)
+            .updating($dragOffset) { value, offset, _ in
+                guard !isPaging, abs(value.translation.width) > abs(value.translation.height) * 1.2 else { return }
+                offset = min(width, max(-width, value.translation.width))
+            }
+            .onEnded { value in
+                let horizontal = value.translation.width
+                guard !isPaging, abs(horizontal) >= 20,
+                      abs(horizontal) > abs(value.translation.height) * 1.2 else { return }
+                let threshold = min(56, width * 0.18)
+                let projected = value.predictedEndTranslation.width
+                guard abs(horizontal) >= threshold || (abs(projected) >= threshold && horizontal * projected > 0) else { return }
+                let delta = horizontal < 0 ? 1 : -1
+                let originalDate = selectedDate
+                transitionOffset = min(width, max(-width, horizontal))
+                isPaging = true
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2), completionCriteria: .logicallyComplete) {
+                    transitionOffset = delta > 0 ? -width : width
+                } completion: {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        if selectedDate == originalDate { onMonthChange(delta) }
+                        transitionOffset = 0
+                        isPaging = false
+                    }
+                }
+            }
+    }
+
+    private func monthGrid(for date: Date) -> some View {
+        let first = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+        let offset = (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7
+        let count = calendar.range(of: .day, in: .month, for: date)?.count ?? 30
         // Weekday labels and dates share one grid, including column widths and spacing.
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: compact ? 1 : 4) {
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: compact ? 1 : 4) {
             ForEach(0..<(7 + offset + count), id: \.self) { index in
                 if index < 7 {
                     Text(["D", "S", "T", "Q", "Q", "S", "S"][(calendar.firstWeekday - 1 + index) % 7])
@@ -215,7 +275,7 @@ struct MonthCalendar: View {
                     Color.clear.frame(height: compact ? 27 : 39)
                 } else {
                     let day = calendar.date(byAdding: .day, value: index - 7 - offset, to: first) ?? first
-                    CalendarDay(date: day, selected: calendar.isDate(day, inSameDayAs: selectedDate),
+                    CalendarDay(date: day, selected: calendar.isDate(day, inSameDayAs: date),
                                 shifts: store.on(day), accent: accent, size: compact ? 27 : 39) { selectedDate = day }
                 }
             }
