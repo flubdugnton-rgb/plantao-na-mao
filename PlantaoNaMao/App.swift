@@ -211,7 +211,7 @@ struct MonthCalendar: View {
                     HStack(alignment: .top, spacing: 0) {
                         ForEach(-1...1, id: \.self) { page in
                             let date = calendar.date(byAdding: .month, value: page, to: selectedDate) ?? selectedDate
-                            monthGrid(for: date)
+                            monthGrid(for: date, isCurrentPage: page == 0)
                                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
                                 .accessibilityHidden(page != 0)
                                 .allowsHitTesting(page == 0)
@@ -258,7 +258,7 @@ struct MonthCalendar: View {
             }
     }
 
-    private func monthGrid(for date: Date) -> some View {
+    private func monthGrid(for date: Date, isCurrentPage: Bool = true) -> some View {
         let first = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
         let offset = (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7
         let count = calendar.range(of: .day, in: .month, for: date)?.count ?? 30
@@ -271,12 +271,14 @@ struct MonthCalendar: View {
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, compact ? 1 : 3)
                         .accessibilityIdentifier("weekday-column-\(index)")
+                        .accessibilityHidden(!isCurrentPage)
                 } else if index < 7 + offset {
                     Color.clear.frame(height: compact ? 27 : 39)
                 } else {
                     let day = calendar.date(byAdding: .day, value: index - 7 - offset, to: first) ?? first
                     CalendarDay(date: day, selected: calendar.isDate(day, inSameDayAs: date),
                                 shifts: store.on(day), accent: accent, size: compact ? 27 : 39) { selectedDate = day }
+                        .accessibilityHidden(!isCurrentPage)
                 }
             }
         }.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
