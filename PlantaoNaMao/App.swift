@@ -205,7 +205,7 @@ struct MonthCalendar: View {
     private var calendar: Calendar { Calendar.current }
     var body: some View {
         // Keep the current grid's intrinsic height while adjacent months follow the finger.
-        monthGrid(for: selectedDate).hidden().accessibilityHidden(true)
+        monthGrid(for: selectedDate, isCurrentPage: false).hidden().accessibilityHidden(true)
             .overlay {
                 GeometryReader { geometry in
                     HStack(alignment: .top, spacing: 0) {
@@ -270,14 +270,15 @@ struct MonthCalendar: View {
                         .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, compact ? 1 : 3)
-                        .accessibilityIdentifier("weekday-column-\(index)")
+                        .accessibilityIdentifier(isCurrentPage ? "weekday-column-\(index)" : "")
                         .accessibilityHidden(!isCurrentPage)
                 } else if index < 7 + offset {
                     Color.clear.frame(height: compact ? 27 : 39)
                 } else {
                     let day = calendar.date(byAdding: .day, value: index - 7 - offset, to: first) ?? first
                     CalendarDay(date: day, selected: calendar.isDate(day, inSameDayAs: date),
-                                shifts: store.on(day), accent: accent, size: compact ? 27 : 39) { selectedDate = day }
+                                shifts: store.on(day), accent: accent, size: compact ? 27 : 39,
+                                isInteractive: isCurrentPage) { selectedDate = day }
                         .accessibilityHidden(!isCurrentPage)
                 }
             }
@@ -291,27 +292,34 @@ struct CalendarDay: View {
     let shifts: [Shift]
     let accent: Color
     let size: CGFloat
+    let isInteractive: Bool
     let action: () -> Void
     private var colors: [ShiftColor] {
         shifts.reduce(into: [ShiftColor]()) { if !$0.contains($1.color) { $0.append($1.color) } }
     }
     var body: some View {
-        Button(action: action) {
-            ZStack {
-                if selected { Circle().fill(accent.opacity(0.17)).padding(3) }
-                ForEach(Array(colors.enumerated()), id: \.offset) { index, color in
-                    Circle().trim(from: Double(index) / Double(colors.count) + (colors.count > 1 ? 0.012 : 0),
-                                  to: Double(index + 1) / Double(colors.count) - (colors.count > 1 ? 0.012 : 0))
-                        .stroke(color.value, style: StrokeStyle(lineWidth: 2.3, lineCap: .round)).rotationEffect(.degrees(-90)).padding(2)
-                }
-                Text("\(Calendar.current.component(.day, from: date))")
-                    .font(.system(size: size < 30 ? 12 : 17, weight: selected || Calendar.current.isDateInToday(date) ? .bold : .regular))
-                    .foregroundStyle(Calendar.current.isDateInToday(date) ? accent : Color.primary)
-            }.frame(width: size, height: size).frame(maxWidth: .infinity).contentShape(Rectangle())
-        }.buttonStyle(.plain)
-            .accessibilityIdentifier("calendar-day-\(Calendar.current.component(.day, from: date))")
-            .accessibilityLabel("\(date.formatted(date: .complete, time: .omitted)), \(shifts.count) plantões\(colors.isEmpty ? "" : ", " + colors.map(\.name).joined(separator: ", "))")
-            .accessibilityAddTraits(selected ? .isSelected : [])
+        if isInteractive {
+            Button(action: action) { dayContent }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("calendar-day-\(Calendar.current.component(.day, from: date))")
+                .accessibilityLabel("\(date.formatted(date: .complete, time: .omitted)), \(shifts.count) plantões\(colors.isEmpty ? "" : ", " + colors.map(\.name).joined(separator: ", "))")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+        } else {
+            dayContent.accessibilityElement(children: .ignore).accessibilityHidden(true)
+        }
+    }
+    private var dayContent: some View {
+        ZStack {
+            if selected { Circle().fill(accent.opacity(0.17)).padding(3) }
+            ForEach(Array(colors.enumerated()), id: \.offset) { index, color in
+                Circle().trim(from: Double(index) / Double(colors.count) + (colors.count > 1 ? 0.012 : 0),
+                              to: Double(index + 1) / Double(colors.count) - (colors.count > 1 ? 0.012 : 0))
+                    .stroke(color.value, style: StrokeStyle(lineWidth: 2.3, lineCap: .round)).rotationEffect(.degrees(-90)).padding(2)
+            }
+            Text("\(Calendar.current.component(.day, from: date))")
+                .font(.system(size: size < 30 ? 12 : 17, weight: selected || Calendar.current.isDateInToday(date) ? .bold : .regular))
+                .foregroundStyle(Calendar.current.isDateInToday(date) ? accent : Color.primary)
+        }.frame(width: size, height: size).frame(maxWidth: .infinity).contentShape(Rectangle())
     }
 }
 
